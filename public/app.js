@@ -79,3 +79,269 @@ function setActiveNav(routeName) {
     }
   });
 }
+
+// Card component
+// ---------------------------------------------------------------------------
+function problemCard(p) {
+  return `
+  <a href="#problem/${p.id}" class="group relative block rounded-xl border border-zinc-800 bg-zinc-900/40 p-5 hover:border-accent-soft/60 hover:bg-zinc-900/70 transition-all duration-300 overflow-hidden">
+    <div class="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 bg-gradient-to-br from-accent/5 to-transparent pointer-events-none"></div>
+    <div class="flex items-start justify-between mb-3 relative">
+      <span class="font-mono text-xs text-zinc-600">#${String(p.id).padStart(3, '0')}</span>
+      ${difficultyBadge(p.difficulty)}
+    </div>
+    <h3 class="text-zinc-100 font-semibold mb-1.5 group-hover:text-accent-soft transition-colors duration-200">${escapeHtml(p.title)}</h3>
+    <p class="text-xs text-zinc-500 mb-4">${escapeHtml(p.category)}</p>
+    <div class="flex items-center gap-4 text-xs font-mono text-zinc-500 pt-3 border-t border-zinc-800/70">
+      <span title="Time complexity">⏱ ${p.time_complexity}</span>
+      <span title="Space complexity">▦ ${p.space_complexity}</span>
+      <span title="Lines of code">${p.loc} loc</span>
+    </div>
+  </a>`;
+}
+ 
+// ---------------------------------------------------------------------------
+// View: Home
+// ---------------------------------------------------------------------------
+function renderHome() {
+  const problems = state.problems;
+  const counts = { Easy: 0, Medium: 0, Hard: 0 };
+  problems.forEach(p => { if (counts[p.difficulty] !== undefined) counts[p.difficulty]++; });
+ 
+  const topByDiff = (diff) => problems.filter(p => p.difficulty === diff).slice(0, 3);
+ 
+  const tierColumn = (diff, colorClass) => {
+    const items = topByDiff(diff);
+    if (items.length === 0) {
+      return `<div class="rounded-xl border border-dashed border-zinc-800 p-6 text-center text-sm text-zinc-600">More ${diff.toLowerCase()} solutions on the way.</div>`;
+    }
+    return items.map(p => `
+      <a href="#problem/${p.id}" class="group flex items-center justify-between gap-3 py-3 border-b border-zinc-800/70 last:border-0 hover:pl-1 transition-all duration-200">
+        <div class="min-w-0">
+          <p class="text-sm text-zinc-200 group-hover:text-accent-soft transition-colors duration-200 truncate">${escapeHtml(p.title)}</p>
+          <p class="text-xs text-zinc-600 font-mono mt-0.5">${p.time_complexity} · ${p.loc} loc</p>
+        </div>
+        <svg class="w-4 h-4 text-zinc-700 group-hover:text-accent-soft shrink-0 transition-colors duration-200" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" /></svg>
+      </a>`).join('');
+  };
+ 
+  root.innerHTML = `
+    <section class="max-w-7xl mx-auto px-6 pt-24 pb-20">
+      <div class="max-w-3xl stagger" id="hero-stagger">
+        <p class="font-mono text-xs text-accent-soft mb-4">LeetCode Portfolio · Interactive Problem Log</p>
+        <h1 class="text-4xl sm:text-5xl md:text-6xl font-bold text-zinc-50 tracking-tight leading-[1.1] mb-6">
+          Seventy-five problems.<br class="hidden sm:block" /> One way of thinking about complexity.
+        </h1>
+        <p class="text-lg text-zinc-400 max-w-xl leading-relaxed">
+          A running log of solved interview problems — annotated with reasoning, time and space complexity, and the code behind each one.
+        </p>
+        <div class="flex flex-wrap gap-3 mt-8">
+          <a href="#problems" class="px-5 py-2.5 rounded-lg bg-accent hover:bg-accent-soft text-white text-sm font-medium transition-colors duration-200">Browse all problems</a>
+          <a href="#journey" class="px-5 py-2.5 rounded-lg border border-zinc-800 hover:border-zinc-700 text-zinc-300 text-sm font-medium transition-colors duration-200">See the journey</a>
+        </div>
+      </div>
+    </section>
+ 
+    <section class="max-w-7xl mx-auto px-6 pb-20">
+      <div class="grid grid-cols-3 gap-4 sm:gap-6">
+        <div class="rounded-xl border border-zinc-800 bg-zinc-900/30 p-6">
+          <p class="text-3xl sm:text-4xl font-bold font-mono text-easy" data-counter="${counts.Easy}">0</p>
+          <p class="text-sm text-zinc-500 mt-1">Easy solved</p>
+        </div>
+        <div class="rounded-xl border border-zinc-800 bg-zinc-900/30 p-6">
+          <p class="text-3xl sm:text-4xl font-bold font-mono text-medium" data-counter="${counts.Medium}">0</p>
+          <p class="text-sm text-zinc-500 mt-1">Medium solved</p>
+        </div>
+        <div class="rounded-xl border border-zinc-800 bg-zinc-900/30 p-6">
+          <p class="text-3xl sm:text-4xl font-bold font-mono text-hard" data-counter="${counts.Hard}">0</p>
+          <p class="text-sm text-zinc-500 mt-1">Hard solved</p>
+        </div>
+      </div>
+    </section>
+ 
+    <section class="max-w-7xl mx-auto px-6 pb-24">
+      <div class="flex items-baseline justify-between mb-8">
+        <h2 class="text-xl font-semibold text-zinc-100">Top tier solutions</h2>
+        <a href="#problems" class="text-sm text-accent-soft hover:text-accent transition-colors duration-200">View all →</a>
+      </div>
+      <div class="grid md:grid-cols-3 gap-6">
+        <div class="rounded-xl border border-zinc-800 p-5">
+          <h3 class="text-sm font-semibold text-easy mb-3">Easy</h3>
+          <div>${tierColumn('Easy')}</div>
+        </div>
+        <div class="rounded-xl border border-zinc-800 p-5">
+          <h3 class="text-sm font-semibold text-medium mb-3">Medium</h3>
+          <div>${tierColumn('Medium')}</div>
+        </div>
+        <div class="rounded-xl border border-zinc-800 p-5">
+          <h3 class="text-sm font-semibold text-hard mb-3">Hard</h3>
+          <div>${tierColumn('Hard')}</div>
+        </div>
+      </div>
+    </section>
+ 
+    <section class="border-t border-zinc-800/70">
+      <div class="max-w-7xl mx-auto px-6 py-24">
+        <div class="grid lg:grid-cols-[1fr,1.3fr] gap-12 items-start">
+          <div>
+            <p class="font-mono text-xs text-accent-soft mb-3">Methodology</p>
+            <h2 class="text-3xl font-bold text-zinc-50 mb-4 tracking-tight">The optimization mindset</h2>
+            <p class="text-zinc-400 leading-relaxed">
+              Every solution here starts brute-force, then gets pushed until the complexity can't drop any further without sacrificing readability. The goal isn't the cleverest one-liner — it's the version a teammate could read once and trust.
+            </p>
+          </div>
+          <div class="grid sm:grid-cols-2 gap-4">
+            <div class="rounded-xl border border-zinc-800 bg-zinc-900/30 p-5 hover:border-zinc-700 transition-colors duration-200">
+              <div class="w-9 h-9 rounded-lg bg-accent/10 flex items-center justify-center mb-4">
+                <svg class="w-4.5 h-4.5 text-accent-soft" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+              </div>
+              <h3 class="text-zinc-100 font-medium mb-1.5">Start brute, then cut</h3>
+              <p class="text-sm text-zinc-500 leading-relaxed">Every problem begins with the naive O(n²) or worse — the baseline every later optimization is measured against.</p>
+            </div>
+            <div class="rounded-xl border border-zinc-800 bg-zinc-900/30 p-5 hover:border-zinc-700 transition-colors duration-200">
+              <div class="w-9 h-9 rounded-lg bg-accent/10 flex items-center justify-center mb-4">
+                <svg class="w-4.5 h-4.5 text-accent-soft" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
+              </div>
+              <h3 class="text-zinc-100 font-medium mb-1.5">Trade space deliberately</h3>
+              <p class="text-sm text-zinc-500 leading-relaxed">Hash maps, prefix sums, and memoization tables are used on purpose — every extra byte of space buys a specific drop in time.</p>
+            </div>
+            <div class="rounded-xl border border-zinc-800 bg-zinc-900/30 p-5 hover:border-zinc-700 transition-colors duration-200">
+              <div class="w-9 h-9 rounded-lg bg-accent/10 flex items-center justify-center mb-4">
+                <svg class="w-4.5 h-4.5 text-accent-soft" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h7"/></svg>
+              </div>
+              <h3 class="text-zinc-100 font-medium mb-1.5">Fewer lines, same clarity</h3>
+              <p class="text-sm text-zinc-500 leading-relaxed">LOC is tracked per solution not to golf the code, but to notice when a shorter version is genuinely easier to follow.</p>
+            </div>
+            <div class="rounded-xl border border-zinc-800 bg-zinc-900/30 p-5 hover:border-zinc-700 transition-colors duration-200">
+              <div class="w-9 h-9 rounded-lg bg-accent/10 flex items-center justify-center mb-4">
+                <svg class="w-4.5 h-4.5 text-accent-soft" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+              </div>
+              <h3 class="text-zinc-100 font-medium mb-1.5">Complexity is the scoreboard</h3>
+              <p class="text-sm text-zinc-500 leading-relaxed">Big O isn't a footnote — it's the first thing recorded for every problem, before the code is even considered finished.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  `;
+ 
+  animateCounters();
+  const hero = document.getElementById('hero-stagger');
+  if (hero) {
+    hero.style.opacity = '1';
+    hero.classList.add('animate-fadeUp');
+  }
+}
+ 
+function animateCounters() {
+  document.querySelectorAll('[data-counter]').forEach(el => {
+    const target = parseInt(el.dataset.counter, 10) || 0;
+    const duration = 700;
+    const start = performance.now();
+    function tick(now) {
+      const progress = Math.min((now - start) / duration, 1);
+      const eased = 1 - Math.pow(1 - progress, 3);
+      el.textContent = Math.round(eased * target);
+      if (progress < 1) requestAnimationFrame(tick);
+    }
+    requestAnimationFrame(tick);
+  });
+}
+ 
+// ---------------------------------------------------------------------------
+// View: All Problems / Category directory
+// ---------------------------------------------------------------------------
+function renderProblemsDirectory(initialFilters = {}) {
+  const categories = [...new Set(state.problems.map(p => p.category))];
+ 
+  const filters = {
+    difficulty: initialFilters.difficulty || 'All',
+    category: initialFilters.category || 'All',
+    sort: initialFilters.sort || 'id-asc'
+  };
+ 
+  root.innerHTML = `
+    <section class="max-w-7xl mx-auto px-6 pt-16 pb-24">
+      <div class="mb-10">
+        <p class="font-mono text-xs text-accent-soft mb-2">Directory</p>
+        <h1 class="text-3xl font-bold text-zinc-50 tracking-tight">All problems</h1>
+        <p class="text-zinc-500 mt-2">${state.problems.length} problems logged so far.</p>
+      </div>
+ 
+      <div class="flex flex-wrap items-center gap-3 mb-8 p-4 rounded-xl border border-zinc-800 bg-zinc-900/30">
+        <div class="flex items-center gap-2">
+          <label class="text-xs text-zinc-500">Difficulty</label>
+          <select id="filter-difficulty" class="bg-zinc-900 border border-zinc-800 text-sm text-zinc-200 rounded-md px-2 py-1.5 focus:border-accent-soft">
+            <option value="All">All</option>
+            <option value="Easy">Easy</option>
+            <option value="Medium">Medium</option>
+            <option value="Hard">Hard</option>
+          </select>
+        </div>
+        <div class="flex items-center gap-2">
+          <label class="text-xs text-zinc-500">Category</label>
+          <select id="filter-category" class="bg-zinc-900 border border-zinc-800 text-sm text-zinc-200 rounded-md px-2 py-1.5 focus:border-accent-soft">
+            <option value="All">All</option>
+            ${categories.map(c => `<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`).join('')}
+          </select>
+        </div>
+        <div class="flex items-center gap-2 ml-auto">
+          <label class="text-xs text-zinc-500">Sort by</label>
+          <select id="filter-sort" class="bg-zinc-900 border border-zinc-800 text-sm text-zinc-200 rounded-md px-2 py-1.5 focus:border-accent-soft">
+            <option value="id-asc">ID (asc)</option>
+            <option value="id-desc">ID (desc)</option>
+            <option value="name-asc">Name (A–Z)</option>
+            <option value="name-desc">Name (Z–A)</option>
+            <option value="time-asc">Time efficiency (best first)</option>
+            <option value="space-asc">Space efficiency (best first)</option>
+            <option value="loc-asc">Lines of code (fewest first)</option>
+            <option value="loc-desc">Lines of code (most first)</option>
+          </select>
+        </div>
+      </div>
+ 
+      <div id="problems-grid" class="grid sm:grid-cols-2 lg:grid-cols-3 gap-5"></div>
+    </section>
+  `;
+ 
+  document.getElementById('filter-difficulty').value = filters.difficulty;
+  document.getElementById('filter-category').value = filters.category;
+  document.getElementById('filter-sort').value = filters.sort;
+ 
+  function applyAndRender() {
+    const grid = document.getElementById('problems-grid');
+    let list = [...state.problems];
+ 
+    if (filters.difficulty !== 'All') list = list.filter(p => p.difficulty === filters.difficulty);
+    if (filters.category !== 'All') list = list.filter(p => p.category === filters.category);
+ 
+    const complexityRank = (str) => {
+      const order = ['O(1)', 'O(log n)', 'O(n)', 'O(n log n)', 'O(n^2)', 'O(n²)', 'O(2^n)'];
+      const idx = order.indexOf(str);
+      return idx === -1 ? order.length : idx;
+    };
+ 
+    switch (filters.sort) {
+      case 'id-asc': list.sort((a, b) => a.id - b.id); break;
+      case 'id-desc': list.sort((a, b) => b.id - a.id); break;
+      case 'name-asc': list.sort((a, b) => a.title.localeCompare(b.title)); break;
+      case 'name-desc': list.sort((a, b) => b.title.localeCompare(a.title)); break;
+      case 'time-asc': list.sort((a, b) => complexityRank(a.time_complexity) - complexityRank(b.time_complexity)); break;
+      case 'space-asc': list.sort((a, b) => complexityRank(a.space_complexity) - complexityRank(b.space_complexity)); break;
+      case 'loc-asc': list.sort((a, b) => a.loc - b.loc); break;
+      case 'loc-desc': list.sort((a, b) => b.loc - a.loc); break;
+    }
+ 
+    if (list.length === 0) {
+      grid.innerHTML = `<div class="col-span-full text-center py-16 text-zinc-600 border border-dashed border-zinc-800 rounded-xl">No problems match these filters yet.</div>`;
+      return;
+    }
+    grid.innerHTML = list.map(problemCard).join('');
+  }
+ 
+  document.getElementById('filter-difficulty').addEventListener('change', e => { filters.difficulty = e.target.value; applyAndRender(); });
+  document.getElementById('filter-category').addEventListener('change', e => { filters.category = e.target.value; applyAndRender(); });
+  document.getElementById('filter-sort').addEventListener('change', e => { filters.sort = e.target.value; applyAndRender(); });
+ 
+  applyAndRender();
+}
