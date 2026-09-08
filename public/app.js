@@ -67,3 +67,15 @@ function debounce(fn, delay) {
     t = setTimeout(() => fn(...args), delay);
   };
 }
+
+function setActiveNav(routeName) {
+  document.querySelectorAll('.nav-link').forEach(el => {
+    if (el.dataset.route === routeName) {
+      el.classList.add('text-zinc-100', 'bg-zinc-900');
+      el.classList.remove('text-zinc-400');
+    } else {
+      el.classList.remove('text-zinc-100', 'bg-zinc-900');
+      el.classList.add('text-zinc-400');
+    }
+  });
+}
