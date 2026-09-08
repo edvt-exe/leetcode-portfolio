@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>LeetCode — Solved</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  tailwind.config = {
+    theme: {
+      extend: {
+        colors: {
+          accent: {
+            DEFAULT: '#6C5CE9',
+            soft: '#8B7CF6',
+            dim: '#3A2E82'
+          },
+          easy: '#3DDC97',
+          medium: '#F5B942',
+          hard: '#F0537A'
+        },
+        fontFamily: {
+          sans: ['Inter', 'sans-serif'],
+          mono: ['"JetBrains Mono"', 'monospace']
+        },
+        keyframes: {
+          fadeUp: {
+            '0%': { opacity: 0, transform: 'translateY(14px)' },
+            '100%': { opacity: 1, transform: 'translateY(0)' }
+          },
+          fadeIn: {
+            '0%': { opacity: 0 },
+            '100%': { opacity: 1 }
+          }
+        },
+        animation: {
+          fadeUp: 'fadeUp 0.7s cubic-bezier(0.16, 1, 0.3, 1) forwards',
+          fadeIn: 'fadeIn 0.6s ease forwards'
+        }
+      }
+    }
+  }
+</script>
+<style>
+  body { background-color: #09090b; }
+  ::-webkit-scrollbar { width: 10px; }
+  ::-webkit-scrollbar-track { background: #09090b; }
+  ::-webkit-scrollbar-thumb { background: #27272a; border-radius: 999px; }
+  ::-webkit-scrollbar-thumb:hover { background: #3f3f46; }
+  .noise-bg {
+    background-image: radial-gradient(circle at 20% 10%, rgba(108,92,233,0.12), transparent 40%),
+                       radial-gradient(circle at 85% 30%, rgba(108,92,233,0.08), transparent 35%);
+  }
+  .stagger > * { opacity: 0; }
+  @media (prefers-reduced-motion: reduce) {
+    * { animation-duration: 0.001ms !important; animation-iteration-count: 1 !important; transition-duration: 0.001ms !important; }
+  }
+  input:focus-visible, button:focus-visible, a:focus-visible { outline: 2px solid #8B7CF6; outline-offset: 2px; }
+</style>
+</head>
+<body class="bg-zinc-950 text-zinc-200 font-sans antialiased min-h-screen noise-bg">
+
+  <nav class="fixed top-0 inset-x-0 z-50 border-b border-zinc-800/70 bg-zinc-950/80 backdrop-blur-md">
+    <div class="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between gap-6">
+      <a href="#home" class="flex items-center gap-2 shrink-0 group">
+        <span class="w-7 h-7 rounded-md bg-accent flex items-center justify-center text-white text-xs font-bold group-hover:bg-accent-soft transition-colors duration-200">PROBLEMS</span>
+        <span class="font-semibold text-zinc-100 tracking-tight">LeetCode<span class="text-accent-soft">.solved</span></span>
+      </a>
+
+      <div class="hidden md:flex flex-1 max-w-md relative">
+        <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-4.35-4.35M17 10a7 7 0 11-14 0 7 7 0 0114 0z" />
+        </svg>
+        <input
+          id="global-search"
+          type="text"
+          placeholder="Search by problem, category, or #id"
+          class="w-full bg-zinc-900/70 border border-zinc-800 rounded-lg pl-9 pr-3 py-2 text-sm text-zinc-200 placeholder:text-zinc-500 focus:border-accent-soft focus:bg-zinc-900 transition-colors duration-200"
+        />
+      </div>
+
+      <div class="hidden md:flex items-center gap-1 text-sm">
+        <a href="#home" data-route="home" class="nav-link px-3 py-2 rounded-md text-zinc-400 hover:text-zinc-100 hover:bg-zinc-900 transition-colors duration-200">Home</a>
+        <a href="#problems" data-route="problems" class="nav-link px-3 py-2 rounded-md text-zinc-400 hover:text-zinc-100 hover:bg-zinc-900 transition-colors duration-200">All Problems</a>
+        <a href="#journey" data-route="journey" class="nav-link px-3 py-2 rounded-md text-zinc-400 hover:text-zinc-100 hover:bg-zinc-900 transition-colors duration-200">Journey</a>
+        <a href="#analytics" data-route="analytics" class="nav-link px-3 py-2 rounded-md text-zinc-400 hover:text-zinc-100 hover:bg-zinc-900 transition-colors duration-200">Analytics</a>
+      </div>
+
+      <button id="mobile-menu-btn" class="md:hidden text-zinc-400 hover:text-zinc-100">
+        <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h16" />
+        </svg>
+      </button>
+    </div>
+
+    <div id="mobile-menu" class="hidden md:hidden border-t border-zinc-800/70 px-6 py-4 space-y-3">
+      <input
+        id="global-search-mobile"
+        type="text"
+        placeholder="Search problems..."
+        class="w-full bg-zinc-900/70 border border-zinc-800 rounded-lg px-3 py-2 text-sm text-zinc-200 placeholder:text-zinc-500 focus:border-accent-soft"
+      />
+      <div class="flex flex-col gap-1 text-sm">
+        <a href="#home" class="px-2 py-2 rounded-md text-zinc-400 hover:text-zinc-100">Home</a>
+        <a href="#problems" class="px-2 py-2 rounded-md text-zinc-400 hover:text-zinc-100">All Problems</a>
+        <a href="#journey" class="px-2 py-2 rounded-md text-zinc-400 hover:text-zinc-100">Journey</a>
+        <a href="#analytics" class="px-2 py-2 rounded-md text-zinc-400 hover:text-zinc-100">Analytics</a>
+      </div>
+    </div>
+  </nav>
+
+  <main id="app-root" class="pt-16 min-h-screen"></main>
+
+  <footer class="border-t border-zinc-800/70 mt-24">
+    <div class="max-w-7xl mx-auto px-6 py-10 flex flex-col sm:flex-row items-center justify-between gap-4 text-sm text-zinc-500">
+      <p>Built while working through the problems, one clean solution at a time.</p>
+      <p class="font-mono text-xs text-zinc-600">v1.0 — Node.js / Express</p>
+    </div>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>
