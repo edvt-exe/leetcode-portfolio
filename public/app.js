@@ -80,8 +80,7 @@ function setActiveNav(routeName) {
   });
 }
 
-// Card component
-// ---------------------------------------------------------------------------
+// card component
 function problemCard(p) {
   return `
   <a href="#problem/${p.id}" class="group relative block rounded-xl border border-zinc-800 bg-zinc-900/40 p-5 hover:border-accent-soft/60 hover:bg-zinc-900/70 transition-all duration-300 overflow-hidden">
@@ -100,9 +99,7 @@ function problemCard(p) {
   </a>`;
 }
  
-// ---------------------------------------------------------------------------
-// View: Home
-// ---------------------------------------------------------------------------
+// view: home
 function renderHome() {
   const problems = state.problems;
   const counts = { Easy: 0, Medium: 0, Hard: 0 };
@@ -248,9 +245,7 @@ function animateCounters() {
   });
 }
  
-// ---------------------------------------------------------------------------
-// View: All Problems / Category directory
-// ---------------------------------------------------------------------------
+// view: all problems / category directory
 function renderProblemsDirectory(initialFilters = {}) {
   const categories = [...new Set(state.problems.map(p => p.category))];
  
@@ -345,3 +340,306 @@ function renderProblemsDirectory(initialFilters = {}) {
  
   applyAndRender();
 }
+
+// view: Search results
+function renderSearchResults(query) {
+  const q = query.trim().toLowerCase();
+  const results = q
+    ? state.problems.filter(p =>
+        String(p.id).includes(q) ||
+        p.title.toLowerCase().includes(q) ||
+        p.category.toLowerCase().includes(q))
+    : [];
+ 
+  root.innerHTML = `
+    <section class="max-w-7xl mx-auto px-6 pt-16 pb-24">
+      <p class="font-mono text-xs text-accent-soft mb-2">Search</p>
+      <h1 class="text-3xl font-bold text-zinc-50 tracking-tight mb-1">Results for "${escapeHtml(query)}"</h1>
+      <p class="text-zinc-500 mb-10">${results.length} match${results.length === 1 ? '' : 'es'} found.</p>
+      <div id="search-grid" class="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
+        ${results.length
+          ? results.map(problemCard).join('')
+          : `<div class="col-span-full text-center py-16 text-zinc-600 border border-dashed border-zinc-800 rounded-xl">Nothing matched — try an ID, a title, or a category name.</div>`}
+      </div>
+    </section>
+  `;
+}
+ 
+// view: Single prolbem
+function renderSingleProblem(id) {
+  const problem = state.problems.find(p => String(p.id) === String(id));
+ 
+  if (!problem) {
+    root.innerHTML = `
+      <section class="max-w-3xl mx-auto px-6 pt-24 pb-24 text-center">
+        <p class="font-mono text-xs text-hard mb-3">404</p>
+        <h1 class="text-2xl font-bold text-zinc-100 mb-3">This problem hasn't been logged yet</h1>
+        <a href="#problems" class="text-accent-soft hover:text-accent transition-colors duration-200 text-sm">← Back to all problems</a>
+      </section>`;
+    return;
+  }
+ 
+  root.innerHTML = `
+    <section class="max-w-7xl mx-auto px-6 pt-12 pb-24">
+      <a href="#problems" class="inline-flex items-center gap-1.5 text-sm text-zinc-500 hover:text-zinc-200 transition-colors duration-200 mb-8">
+        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7" /></svg>
+        All problems
+      </a>
+ 
+      <div class="grid lg:grid-cols-2 gap-12 items-start">
+        <div>
+          <div class="flex items-center gap-3 mb-4">
+            <span class="font-mono text-xs text-zinc-600">#${String(problem.id).padStart(3, '0')}</span>
+            ${difficultyBadge(problem.difficulty)}
+            <span class="text-xs text-zinc-600">${escapeHtml(problem.category)}</span>
+          </div>
+          <h1 class="text-3xl sm:text-4xl font-bold text-zinc-50 tracking-tight mb-6">${escapeHtml(problem.title)}</h1>
+          <p class="text-zinc-400 leading-relaxed mb-10">${escapeHtml(problem.description)}</p>
+ 
+          <div class="mb-10">
+            <h2 class="text-sm font-semibold text-zinc-200 mb-3 flex items-center gap-2">
+              <span class="w-1 h-4 bg-accent rounded-full"></span> Problem breakdown
+            </h2>
+            <p class="text-zinc-400 leading-relaxed pl-3 border-l border-zinc-800">${escapeHtml(problem.description)}</p>
+          </div>
+ 
+          <div>
+            <h2 class="text-sm font-semibold text-zinc-200 mb-3 flex items-center gap-2">
+              <span class="w-1 h-4 bg-accent rounded-full"></span> Solution architecture
+            </h2>
+            <p class="text-zinc-400 leading-relaxed pl-3 border-l border-zinc-800">${escapeHtml(problem.solution_logic)}</p>
+          </div>
+        </div>
+ 
+        <div class="lg:sticky lg:top-24">
+          <div class="rounded-xl border border-zinc-800 bg-zinc-900/70 overflow-hidden">
+            <div class="flex items-center justify-between px-4 py-3 border-b border-zinc-800 bg-zinc-900">
+              <div class="flex items-center gap-1.5">
+                <span class="w-2.5 h-2.5 rounded-full bg-hard/80"></span>
+                <span class="w-2.5 h-2.5 rounded-full bg-medium/80"></span>
+                <span class="w-2.5 h-2.5 rounded-full bg-easy/80"></span>
+              </div>
+              <span class="font-mono text-xs text-zinc-500">solution.py</span>
+            </div>
+            <pre class="p-5 overflow-x-auto text-sm leading-relaxed font-mono text-zinc-300"><code>${escapeHtml(problem.python_code)}</code></pre>
+            <div class="grid grid-cols-3 divide-x divide-zinc-800 border-t border-zinc-800">
+              <div class="px-4 py-3">
+                <p class="text-xs text-zinc-600 mb-1">Time</p>
+                <p class="font-mono text-sm text-accent-soft">${problem.time_complexity}</p>
+              </div>
+              <div class="px-4 py-3">
+                <p class="text-xs text-zinc-600 mb-1">Space</p>
+                <p class="font-mono text-sm text-accent-soft">${problem.space_complexity}</p>
+              </div>
+              <div class="px-4 py-3">
+                <p class="text-xs text-zinc-600 mb-1">Lines</p>
+                <p class="font-mono text-sm text-accent-soft">${problem.loc}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  `;
+}
+ 
+// view: My Journey
+function renderJourney() {
+  const solvedCategories = new Set(state.problems.map(p => p.category));
+ 
+  const items = CATEGORY_ORDER.map((cat, i) => {
+    const solved = solvedCategories.has(cat);
+    const count = state.problems.filter(p => p.category === cat).length;
+    return `
+      <div class="relative pl-12 pb-10 last:pb-0">
+        <div class="absolute left-0 top-0 w-8 h-8 rounded-full border-2 flex items-center justify-center font-mono text-xs
+          ${solved ? 'border-accent-soft bg-accent-dim text-accent-soft' : 'border-zinc-800 bg-zinc-900 text-zinc-600'}">
+          ${solved ? '✓' : i + 1}
+        </div>
+        <div class="rounded-lg border ${solved ? 'border-zinc-800' : 'border-zinc-900'} bg-zinc-900/30 px-5 py-4">
+          <div class="flex items-center justify-between">
+            <h3 class="font-medium ${solved ? 'text-zinc-100' : 'text-zinc-600'}">${escapeHtml(cat)}</h3>
+            <span class="text-xs font-mono ${solved ? 'text-accent-soft' : 'text-zinc-700'}">${count} solved</span>
+          </div>
+        </div>
+      </div>`;
+  }).join('');
+ 
+  root.innerHTML = `
+    <section class="max-w-3xl mx-auto px-6 pt-16 pb-24">
+      <p class="font-mono text-xs text-accent-soft mb-2">Progression</p>
+      <h1 class="text-3xl font-bold text-zinc-50 tracking-tight mb-2">My journey through Blind 75</h1>
+      <p class="text-zinc-500 mb-12">Moving category by category, from array fundamentals to dynamic programming.</p>
+ 
+      <div class="relative">
+        <div class="absolute left-4 top-2 bottom-2 w-px bg-zinc-800"></div>
+        ${items}
+      </div>
+    </section>
+  `;
+}
+ 
+// view: analytics
+function renderAnalytics() {
+  const problems = state.problems;
+  const total = problems.length || 1;
+ 
+  const byDifficulty = { Easy: [], Medium: [], Hard: [] };
+  problems.forEach(p => { if (byDifficulty[p.difficulty]) byDifficulty[p.difficulty].push(p); });
+ 
+  const avgLoc = (arr) => arr.length ? Math.round(arr.reduce((s, p) => s + p.loc, 0) / arr.length) : 0;
+ 
+  const dsGuess = (p) => {
+    const t = (p.category + ' ' + p.title + ' ' + p.solution_logic).toLowerCase();
+    if (t.includes('hash') || t.includes('map')) return 'Hash Map';
+    if (t.includes('stack')) return 'Stack';
+    if (t.includes('queue') || t.includes('heap')) return 'Heap / Queue';
+    if (t.includes('tree')) return 'Tree';
+    if (t.includes('graph')) return 'Graph';
+    if (t.includes('linked list')) return 'Linked List';
+    if (t.includes('array') || t.includes('pointer') || t.includes('window')) return 'Array';
+    return 'Array';
+  };
+ 
+  const dsCounts = {};
+  problems.forEach(p => {
+    const ds = dsGuess(p);
+    dsCounts[ds] = (dsCounts[ds] || 0) + 1;
+  });
+  const dsSorted = Object.entries(dsCounts).sort((a, b) => b[1] - a[1]);
+  const maxDs = dsSorted.length ? dsSorted[0][1] : 1;
+ 
+  const catCounts = {};
+  problems.forEach(p => { catCounts[p.category] = (catCounts[p.category] || 0) + 1; });
+  const maxCat = Math.max(1, ...Object.values(catCounts));
+ 
+  root.innerHTML = `
+    <section class="max-w-7xl mx-auto px-6 pt-16 pb-24">
+      <p class="font-mono text-xs text-accent-soft mb-2">Insights</p>
+      <h1 class="text-3xl font-bold text-zinc-50 tracking-tight mb-2">Analytics</h1>
+      <p class="text-zinc-500 mb-12">A read-out of patterns across ${problems.length} logged solution${problems.length === 1 ? '' : 's'}.</p>
+ 
+      <div class="grid lg:grid-cols-2 gap-8 mb-12">
+        <div class="rounded-xl border border-zinc-800 bg-zinc-900/30 p-6">
+          <h2 class="text-sm font-semibold text-zinc-200 mb-5">Most used data structures</h2>
+          <div class="space-y-3">
+            ${dsSorted.map(([name, count]) => `
+              <div>
+                <div class="flex justify-between text-xs mb-1.5">
+                  <span class="text-zinc-400">${escapeHtml(name)}</span>
+                  <span class="font-mono text-zinc-600">${count}</span>
+                </div>
+                <div class="h-1.5 rounded-full bg-zinc-800 overflow-hidden">
+                  <div class="h-full bg-accent rounded-full" style="width:${(count / maxDs) * 100}%"></div>
+                </div>
+              </div>`).join('') || `<p class="text-sm text-zinc-600">Not enough data yet.</p>`}
+          </div>
+        </div>
+ 
+        <div class="rounded-xl border border-zinc-800 bg-zinc-900/30 p-6">
+          <h2 class="text-sm font-semibold text-zinc-200 mb-5">Average LOC per difficulty</h2>
+          <div class="space-y-4">
+            ${['Easy', 'Medium', 'Hard'].map(diff => `
+              <div class="flex items-center gap-4">
+                <span class="w-16 text-xs ${DIFF_STYLES[diff].text}">${diff}</span>
+                <div class="flex-1 h-2 rounded-full bg-zinc-800 overflow-hidden">
+                  <div class="h-full rounded-full ${diff === 'Easy' ? 'bg-easy' : diff === 'Medium' ? 'bg-medium' : 'bg-hard'}" style="width:${Math.min(100, avgLoc(byDifficulty[diff]) * 3)}%"></div>
+                </div>
+                <span class="font-mono text-xs text-zinc-500 w-16 text-right">${avgLoc(byDifficulty[diff])} loc</span>
+              </div>`).join('')}
+          </div>
+        </div>
+      </div>
+ 
+      <div class="rounded-xl border border-zinc-800 bg-zinc-900/30 p-6">
+        <h2 class="text-sm font-semibold text-zinc-200 mb-5">Coverage by category</h2>
+        <div class="grid sm:grid-cols-2 gap-x-8 gap-y-4">
+          ${CATEGORY_ORDER.map(cat => {
+            const count = catCounts[cat] || 0;
+            return `
+            <div>
+              <div class="flex justify-between text-xs mb-1.5">
+                <span class="text-zinc-400">${escapeHtml(cat)}</span>
+                <span class="font-mono text-zinc-600">${count}</span>
+              </div>
+              <div class="h-1.5 rounded-full bg-zinc-800 overflow-hidden">
+                <div class="h-full bg-accent-soft/70 rounded-full" style="width:${(count / maxCat) * 100}%"></div>
+              </div>
+            </div>`;
+          }).join('')}
+        </div>
+      </div>
+    </section>
+  `;
+}
+ 
+// router
+async function router() {
+  await loadProblems();
+ 
+  const hash = window.location.hash.replace(/^#/, '') || 'home';
+  const [routeName, param] = hash.split('/');
+ 
+  root.style.opacity = '0';
+ 
+  switch (routeName) {
+    case 'home':
+      setActiveNav('home');
+      renderHome();
+      break;
+    case 'problems':
+      setActiveNav('problems');
+      renderProblemsDirectory();
+      break;
+    case 'search':
+      setActiveNav(null);
+      renderSearchResults(decodeURIComponent(param || ''));
+      break;
+    case 'problem':
+      setActiveNav('problems');
+      renderSingleProblem(param);
+      break;
+    case 'journey':
+      setActiveNav('journey');
+      renderJourney();
+      break;
+    case 'analytics':
+      setActiveNav('analytics');
+      renderAnalytics();
+      break;
+    default:
+      setActiveNav('home');
+      renderHome();
+  }
+ 
+  requestAnimationFrame(() => {
+    root.style.transition = 'opacity 0.25s ease';
+    root.style.opacity = '1';
+  });
+ 
+  window.scrollTo({ top: 0, behavior: 'instant' in window ? 'instant' : 'auto' });
+}
+// search wiring
+function wireSearchInput(input) {
+  if (!input) return;
+  input.addEventListener('input', debounce((e) => {
+    const q = e.target.value.trim();
+    if (q.length === 0) {
+      if (window.location.hash.startsWith('#search')) window.location.hash = 'home';
+      return;
+    }
+    window.location.hash = `search/${encodeURIComponent(q)}`;
+  }, 250));
+}
+ 
+wireSearchInput(document.getElementById('global-search'));
+wireSearchInput(document.getElementById('global-search-mobile'));
+ 
+document.getElementById('mobile-menu-btn')?.addEventListener('click', () => {
+  document.getElementById('mobile-menu')?.classList.toggle('hidden');
+});
+ 
+// boot
+window.addEventListener('hashchange', router);
+window.addEventListener('DOMContentLoaded', router);
+ 
