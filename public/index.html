@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Blind 75 — Solved</title>
+<title>LeetCode Blind 75 — Solved</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -63,15 +63,28 @@
   }
   input:focus-visible, button:focus-visible, a:focus-visible { outline: 2px solid #8B7CF6; outline-offset: 2px; }
   #app-root { transition: opacity 0.18s ease; }
+  ::view-transition-old(root),
+  ::view-transition-new(root) {
+    animation-duration: 0.28s;
+  }
+  body.focus-mode nav,
+  body.focus-mode footer {
+    display: none;
+  }
+  body.focus-mode #app-root {
+    padding-top: 2.5rem;
+  }
 </style>
 </head>
 <body class="bg-zinc-950 text-zinc-200 font-sans antialiased min-h-screen noise-bg">
 
+  <div id="reading-progress" class="fixed top-0 left-0 h-1 bg-gradient-to-r from-accent to-accent-soft z-[60] w-0 opacity-0 transition-[width] duration-150 ease-out"></div>
+
   <nav class="fixed top-0 inset-x-0 z-50 border-b border-zinc-800/70 bg-zinc-950/80 backdrop-blur-md">
     <div class="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between gap-6">
       <a href="#home" class="flex items-center gap-2 shrink-0 group">
-        <span class="w-7 h-7 rounded-md bg-accent flex items-center justify-center text-white text-xs font-bold group-hover:bg-accent-soft transition-colors duration-200">75</span>
-        <span class="font-semibold text-zinc-100 tracking-tight">blind75<span class="text-accent-soft">.solved</span></span>
+        <span class="w-7 h-7 rounded-md bg-accent flex items-center justify-center text-white text-xs font-bold group-hover:bg-accent-soft transition-colors duration-200">LC</span>
+        <span class="font-semibold text-zinc-100 tracking-tight">LeetCode<span class="text-accent-soft">.solved</span></span>
       </a>
 
       <div class="hidden md:flex flex-1 max-w-md relative">

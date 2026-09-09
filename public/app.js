@@ -31,6 +31,35 @@ const DIFF_STYLES = {
   Hard:   { text: 'text-hard',   bg: 'bg-hard/10',   border: 'border-hard/30' }
 };
 
+const BOOKMARK_KEY = 'bookmarked_problems';
+
+function getBookmarks() {
+  try { return JSON.parse(localStorage.getItem(BOOKMARK_KEY)) || []; }
+  catch { return []; }
+}
+function isBookmarked(id) {
+  return getBookmarks().includes(String(id));
+}
+function toggleBookmark(id) {
+  const key = String(id);
+  const bookmarks = getBookmarks();
+  const idx = bookmarks.indexOf(key);
+  idx === -1 ? bookmarks.push(key) : bookmarks.splice(idx, 1);
+  localStorage.setItem(BOOKMARK_KEY, JSON.stringify(bookmarks));
+  return idx === -1;
+}
+function bookmarkButtonHtml(id, size = 'sm') {
+  const active = isBookmarked(id);
+  const dims = size === 'sm' ? 'w-7 h-7' : 'w-9 h-9';
+  return `
+  <button data-bookmark-id="${id}" aria-label="Save for review" title="Save for review"
+    class="bookmark-btn ${dims} flex items-center justify-center rounded-md border transition-colors duration-200 ${active ? 'border-accent-soft/50 bg-accent/10 text-accent-soft' : 'border-zinc-800 text-zinc-500 hover:text-accent-soft hover:border-accent-soft/40'}">
+    <svg class="w-3.5 h-3.5" fill="${active ? 'currentColor' : 'none'}" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+      <path stroke-linecap="round" stroke-linejoin="round" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-4-7 4V5z" />
+    </svg>
+  </button>`;
+}
+
 const root = document.getElementById('app-root');
 
 // data
@@ -68,6 +97,31 @@ function debounce(fn, delay) {
   };
 }
 
+let readingProgressHandler = null;
+
+function initReadingProgress() {
+  const bar = document.getElementById('reading-progress');
+  if (!bar) return;
+  bar.classList.remove('opacity-0');
+  readingProgressHandler = () => {
+    const scrollTop = window.scrollY;
+    const docHeight = document.documentElement.scrollHeight - window.innerHeight;
+    const pct = docHeight > 0 ? (scrollTop / docHeight) * 100 : 0;
+    bar.style.width = `${Math.min(100, Math.max(0, pct))}%`;
+  };
+  window.addEventListener('scroll', readingProgressHandler, { passive: true });
+  readingProgressHandler();
+}
+
+function teardownReadingProgress() {
+  const bar = document.getElementById('reading-progress');
+  if (readingProgressHandler) {
+    window.removeEventListener('scroll', readingProgressHandler);
+    readingProgressHandler = null;
+  }
+  if (bar) { bar.classList.add('opacity-0'); bar.style.width = '0%'; }
+}
+
 function setActiveNav(routeName) {
   document.querySelectorAll('.nav-link').forEach(el => {
     if (el.dataset.route === routeName) {
@@ -87,7 +141,10 @@ function problemCard(p) {
     <div class="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 bg-gradient-to-br from-accent/5 to-transparent pointer-events-none"></div>
     <div class="flex items-start justify-between mb-3 relative">
       <span class="font-mono text-xs text-zinc-600">#${String(p.id).padStart(3, '0')}</span>
-      ${difficultyBadge(p.difficulty)}
+      <div class="flex items-center gap-2">
+        ${difficultyBadge(p.difficulty)}
+        ${bookmarkButtonHtml(p.id)}
+      </div>
     </div>
     <h3 class="text-zinc-100 font-semibold mb-1.5 group-hover:text-accent-soft transition-colors duration-200">${escapeHtml(p.title)}</h3>
     <p class="text-xs text-zinc-500 mb-4">${escapeHtml(p.category)}</p>
@@ -406,10 +463,18 @@ function renderSingleProblem(id) {
 
   root.innerHTML = `
     <section class="max-w-7xl mx-auto px-6 pt-12 pb-24">
-      <a href="#problems" class="inline-flex items-center gap-1.5 text-sm text-zinc-500 hover:text-zinc-200 transition-colors duration-200 mb-8">
-        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7" /></svg>
-        All problems
-      </a>
+      <div class="flex items-center justify-between mb-8">
+        <a href="#problems" class="inline-flex items-center gap-1.5 text-sm text-zinc-500 hover:text-zinc-200 transition-colors duration-200">
+          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7" /></svg>
+          All problems
+        </a>
+        <button id="focus-mode-btn" class="flex items-center gap-1.5 text-xs font-mono text-zinc-500 hover:text-accent-soft transition-colors duration-200 px-2.5 py-1.5 rounded-md border border-zinc-800 hover:border-accent-soft/40">
+          <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7" />
+          </svg>
+          Focus mode
+        </button>
+      </div>
 
       <div class="grid lg:grid-cols-2 gap-12 items-start">
         <div>
@@ -417,6 +482,7 @@ function renderSingleProblem(id) {
             <span class="font-mono text-xs text-zinc-600">#${String(problem.id).padStart(3, '0')}</span>
             ${difficultyBadge(problem.difficulty)}
             <span class="text-xs text-zinc-600">${escapeHtml(problem.category)}</span>
+            <span class="ml-auto">${bookmarkButtonHtml(problem.id, 'lg')}</span>
           </div>
           <h1 class="text-3xl sm:text-4xl font-bold text-zinc-50 tracking-tight mb-6">${escapeHtml(problem.title)}</h1>
           <p class="text-zinc-400 leading-relaxed mb-10">${escapeHtml(problem.description)}</p>
@@ -476,11 +542,13 @@ function renderSingleProblem(id) {
     </section>
   `;
 
+  // trigger syntax highlighting now that the code block exists in the DOM
   const codeBlock = document.querySelector('#code-panel code');
   if (codeBlock && window.hljs) {
     hljs.highlightElement(codeBlock);
   }
 
+  // wire the copy-to-clipboard button
   const copyBtn = document.getElementById('copy-code-btn');
   const copyLabel = document.getElementById('copy-code-label');
   copyBtn?.addEventListener('click', async () => {
@@ -496,6 +564,14 @@ function renderSingleProblem(id) {
       copyLabel.textContent = 'Failed';
       setTimeout(() => { copyLabel.textContent = 'Copy'; }, 1600);
     }
+  });
+
+  // reading progress bar is only active on this view
+  initReadingProgress();
+
+  // wire the Focus mode toggle
+  document.getElementById('focus-mode-btn')?.addEventListener('click', () => {
+    document.body.classList.toggle('focus-mode');
   });
 }
 
@@ -535,7 +611,7 @@ function renderJourney() {
   `;
 }
 
-// view: analytics
+// view: Analytics
 function renderAnalytics() {
   const problems = state.problems;
   const total = problems.length || 1;
@@ -633,11 +709,22 @@ function renderAnalytics() {
 async function router() {
   await loadProblems();
 
-  root.classList.add('opacity-0');
-  await new Promise(resolve => setTimeout(resolve, 180));
+  if (document.startViewTransition) {
+    document.startViewTransition(() => renderRoute());
+  } else {
+    root.classList.add('opacity-0');
+    await new Promise(resolve => setTimeout(resolve, 180));
+    renderRoute();
+    requestAnimationFrame(() => root.classList.remove('opacity-0'));
+  }
+}
 
+function renderRoute() {
   const hash = window.location.hash.replace(/^#/, '') || 'home';
   const [routeName, param] = hash.split('/');
+
+  document.body.classList.remove('focus-mode');
+  teardownReadingProgress();
 
   switch (routeName) {
     case 'home':
@@ -670,8 +757,6 @@ async function router() {
   }
 
   window.scrollTo({ top: 0, behavior: 'instant' in window ? 'instant' : 'auto' });
-
-  requestAnimationFrame(() => root.classList.remove('opacity-0'));
 }
 
 // search wiring
@@ -692,6 +777,21 @@ wireSearchInput(document.getElementById('global-search-mobile'));
 
 document.getElementById('mobile-menu-btn')?.addEventListener('click', () => {
   document.getElementById('mobile-menu')?.classList.toggle('hidden');
+});
+
+// delegated bookmark toggle — works for every card and the single problem view
+root.addEventListener('click', (e) => {
+  const btn = e.target.closest('[data-bookmark-id]');
+  if (!btn) return;
+  e.preventDefault();
+  e.stopPropagation();
+  const nowActive = toggleBookmark(btn.dataset.bookmarkId);
+  btn.classList.toggle('border-accent-soft/50', nowActive);
+  btn.classList.toggle('bg-accent/10', nowActive);
+  btn.classList.toggle('text-accent-soft', nowActive);
+  btn.classList.toggle('border-zinc-800', !nowActive);
+  btn.classList.toggle('text-zinc-500', !nowActive);
+  btn.querySelector('svg').setAttribute('fill', nowActive ? 'currentColor' : 'none');
 });
 
 // boot
