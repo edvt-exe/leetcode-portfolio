@@ -3,7 +3,7 @@ const state = {
   problems: [],
   loaded: false
 };
- 
+
 const CATEGORY_ORDER = [
   'Array & Hashing',
   'Two Pointers',
@@ -24,15 +24,15 @@ const CATEGORY_ORDER = [
   'Math & Geometry',
   'Bit Manipulation'
 ];
- 
+
 const DIFF_STYLES = {
   Easy:   { text: 'text-easy',   bg: 'bg-easy/10',   border: 'border-easy/30' },
   Medium: { text: 'text-medium', bg: 'bg-medium/10', border: 'border-medium/30' },
   Hard:   { text: 'text-hard',   bg: 'bg-hard/10',   border: 'border-hard/30' }
 };
- 
+
 const root = document.getElementById('app-root');
- 
+
 // data
 async function loadProblems() {
   if (state.loaded) return state.problems;
@@ -46,7 +46,7 @@ async function loadProblems() {
   state.loaded = true;
   return state.problems;
 }
- 
+
 // small helpers
 function escapeHtml(str) {
   return String(str)
@@ -54,12 +54,12 @@ function escapeHtml(str) {
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;');
 }
- 
+
 function difficultyBadge(diff) {
   const s = DIFF_STYLES[diff] || DIFF_STYLES.Easy;
   return `<span class="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium border ${s.text} ${s.bg} ${s.border}">${diff}</span>`;
 }
- 
+
 function debounce(fn, delay) {
   let t;
   return (...args) => {
@@ -98,15 +98,15 @@ function problemCard(p) {
     </div>
   </a>`;
 }
- 
-// view: home
+
+// view: Home
 function renderHome() {
   const problems = state.problems;
   const counts = { Easy: 0, Medium: 0, Hard: 0 };
   problems.forEach(p => { if (counts[p.difficulty] !== undefined) counts[p.difficulty]++; });
- 
+
   const topByDiff = (diff) => problems.filter(p => p.difficulty === diff).slice(0, 3);
- 
+
   const tierColumn = (diff, colorClass) => {
     const items = topByDiff(diff);
     if (items.length === 0) {
@@ -121,11 +121,11 @@ function renderHome() {
         <svg class="w-4 h-4 text-zinc-700 group-hover:text-accent-soft shrink-0 transition-colors duration-200" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" /></svg>
       </a>`).join('');
   };
- 
+
   root.innerHTML = `
     <section class="max-w-7xl mx-auto px-6 pt-24 pb-20">
       <div class="max-w-3xl stagger" id="hero-stagger">
-        <p class="font-mono text-xs text-accent-soft mb-4">LeetCode Portfolio · Interactive Problem Log</p>
+        <p class="font-mono text-xs text-accent-soft mb-4">Blind 75 · Interactive Problem Log</p>
         <h1 class="text-4xl sm:text-5xl md:text-6xl font-bold text-zinc-50 tracking-tight leading-[1.1] mb-6">
           Seventy-five problems.<br class="hidden sm:block" /> One way of thinking about complexity.
         </h1>
@@ -134,11 +134,30 @@ function renderHome() {
         </p>
         <div class="flex flex-wrap gap-3 mt-8">
           <a href="#problems" class="px-5 py-2.5 rounded-lg bg-accent hover:bg-accent-soft text-white text-sm font-medium transition-colors duration-200">Browse all problems</a>
+          <button id="surprise-me-btn" class="px-5 py-2.5 rounded-lg border border-zinc-800 hover:border-accent-soft/60 text-zinc-300 hover:text-accent-soft text-sm font-medium transition-colors duration-200 flex items-center gap-2">
+            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
+            </svg>
+            Surprise me
+          </button>
           <a href="#journey" class="px-5 py-2.5 rounded-lg border border-zinc-800 hover:border-zinc-700 text-zinc-300 text-sm font-medium transition-colors duration-200">See the journey</a>
+        </div>
+
+        <div class="mt-10 max-w-md">
+          <div class="flex items-baseline justify-between mb-2">
+            <span class="text-xs font-mono text-zinc-500">Blind 75 progress</span>
+            <span class="text-xs font-mono text-accent-soft">${problems.length}/75 · ${Math.round((problems.length / 75) * 100)}%</span>
+          </div>
+          <div class="h-1.5 rounded-full bg-zinc-800 overflow-hidden">
+            <div
+              class="h-full bg-gradient-to-r from-accent to-accent-soft rounded-full transition-[width] duration-700 ease-out"
+              style="width:${Math.min(100, (problems.length / 75) * 100)}%"
+            ></div>
+          </div>
         </div>
       </div>
     </section>
- 
+
     <section class="max-w-7xl mx-auto px-6 pb-20">
       <div class="grid grid-cols-3 gap-4 sm:gap-6">
         <div class="rounded-xl border border-zinc-800 bg-zinc-900/30 p-6">
@@ -155,7 +174,7 @@ function renderHome() {
         </div>
       </div>
     </section>
- 
+
     <section class="max-w-7xl mx-auto px-6 pb-24">
       <div class="flex items-baseline justify-between mb-8">
         <h2 class="text-xl font-semibold text-zinc-100">Top tier solutions</h2>
@@ -176,7 +195,7 @@ function renderHome() {
         </div>
       </div>
     </section>
- 
+
     <section class="border-t border-zinc-800/70">
       <div class="max-w-7xl mx-auto px-6 py-24">
         <div class="grid lg:grid-cols-[1fr,1.3fr] gap-12 items-start">
@@ -221,15 +240,21 @@ function renderHome() {
       </div>
     </section>
   `;
- 
+
   animateCounters();
   const hero = document.getElementById('hero-stagger');
   if (hero) {
     hero.style.opacity = '1';
     hero.classList.add('animate-fadeUp');
   }
+
+  document.getElementById('surprise-me-btn')?.addEventListener('click', () => {
+    if (state.problems.length === 0) return;
+    const random = state.problems[Math.floor(Math.random() * state.problems.length)];
+    window.location.hash = `problem/${random.id}`;
+  });
 }
- 
+
 function animateCounters() {
   document.querySelectorAll('[data-counter]').forEach(el => {
     const target = parseInt(el.dataset.counter, 10) || 0;
@@ -244,17 +269,17 @@ function animateCounters() {
     requestAnimationFrame(tick);
   });
 }
- 
-// view: all problems / category directory
+
+// view: All Problems / Category directory
 function renderProblemsDirectory(initialFilters = {}) {
   const categories = [...new Set(state.problems.map(p => p.category))];
- 
+
   const filters = {
     difficulty: initialFilters.difficulty || 'All',
     category: initialFilters.category || 'All',
     sort: initialFilters.sort || 'id-asc'
   };
- 
+
   root.innerHTML = `
     <section class="max-w-7xl mx-auto px-6 pt-16 pb-24">
       <div class="mb-10">
@@ -262,7 +287,7 @@ function renderProblemsDirectory(initialFilters = {}) {
         <h1 class="text-3xl font-bold text-zinc-50 tracking-tight">All problems</h1>
         <p class="text-zinc-500 mt-2">${state.problems.length} problems logged so far.</p>
       </div>
- 
+
       <div class="flex flex-wrap items-center gap-3 mb-8 p-4 rounded-xl border border-zinc-800 bg-zinc-900/30">
         <div class="flex items-center gap-2">
           <label class="text-xs text-zinc-500">Difficulty</label>
@@ -294,28 +319,28 @@ function renderProblemsDirectory(initialFilters = {}) {
           </select>
         </div>
       </div>
- 
+
       <div id="problems-grid" class="grid sm:grid-cols-2 lg:grid-cols-3 gap-5"></div>
     </section>
   `;
- 
+
   document.getElementById('filter-difficulty').value = filters.difficulty;
   document.getElementById('filter-category').value = filters.category;
   document.getElementById('filter-sort').value = filters.sort;
- 
+
   function applyAndRender() {
     const grid = document.getElementById('problems-grid');
     let list = [...state.problems];
- 
+
     if (filters.difficulty !== 'All') list = list.filter(p => p.difficulty === filters.difficulty);
     if (filters.category !== 'All') list = list.filter(p => p.category === filters.category);
- 
+
     const complexityRank = (str) => {
       const order = ['O(1)', 'O(log n)', 'O(n)', 'O(n log n)', 'O(n^2)', 'O(n²)', 'O(2^n)'];
       const idx = order.indexOf(str);
       return idx === -1 ? order.length : idx;
     };
- 
+
     switch (filters.sort) {
       case 'id-asc': list.sort((a, b) => a.id - b.id); break;
       case 'id-desc': list.sort((a, b) => b.id - a.id); break;
@@ -326,22 +351,22 @@ function renderProblemsDirectory(initialFilters = {}) {
       case 'loc-asc': list.sort((a, b) => a.loc - b.loc); break;
       case 'loc-desc': list.sort((a, b) => b.loc - a.loc); break;
     }
- 
+
     if (list.length === 0) {
       grid.innerHTML = `<div class="col-span-full text-center py-16 text-zinc-600 border border-dashed border-zinc-800 rounded-xl">No problems match these filters yet.</div>`;
       return;
     }
     grid.innerHTML = list.map(problemCard).join('');
   }
- 
+
   document.getElementById('filter-difficulty').addEventListener('change', e => { filters.difficulty = e.target.value; applyAndRender(); });
   document.getElementById('filter-category').addEventListener('change', e => { filters.category = e.target.value; applyAndRender(); });
   document.getElementById('filter-sort').addEventListener('change', e => { filters.sort = e.target.value; applyAndRender(); });
- 
+
   applyAndRender();
 }
 
-// view: Search results
+// view: Search Results
 function renderSearchResults(query) {
   const q = query.trim().toLowerCase();
   const results = q
@@ -350,7 +375,7 @@ function renderSearchResults(query) {
         p.title.toLowerCase().includes(q) ||
         p.category.toLowerCase().includes(q))
     : [];
- 
+
   root.innerHTML = `
     <section class="max-w-7xl mx-auto px-6 pt-16 pb-24">
       <p class="font-mono text-xs text-accent-soft mb-2">Search</p>
@@ -364,11 +389,11 @@ function renderSearchResults(query) {
     </section>
   `;
 }
- 
-// view: Single prolbem
+
+// view: Single Problem
 function renderSingleProblem(id) {
   const problem = state.problems.find(p => String(p.id) === String(id));
- 
+
   if (!problem) {
     root.innerHTML = `
       <section class="max-w-3xl mx-auto px-6 pt-24 pb-24 text-center">
@@ -378,14 +403,14 @@ function renderSingleProblem(id) {
       </section>`;
     return;
   }
- 
+
   root.innerHTML = `
     <section class="max-w-7xl mx-auto px-6 pt-12 pb-24">
       <a href="#problems" class="inline-flex items-center gap-1.5 text-sm text-zinc-500 hover:text-zinc-200 transition-colors duration-200 mb-8">
         <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7" /></svg>
         All problems
       </a>
- 
+
       <div class="grid lg:grid-cols-2 gap-12 items-start">
         <div>
           <div class="flex items-center gap-3 mb-4">
@@ -395,14 +420,14 @@ function renderSingleProblem(id) {
           </div>
           <h1 class="text-3xl sm:text-4xl font-bold text-zinc-50 tracking-tight mb-6">${escapeHtml(problem.title)}</h1>
           <p class="text-zinc-400 leading-relaxed mb-10">${escapeHtml(problem.description)}</p>
- 
+
           <div class="mb-10">
             <h2 class="text-sm font-semibold text-zinc-200 mb-3 flex items-center gap-2">
               <span class="w-1 h-4 bg-accent rounded-full"></span> Problem breakdown
             </h2>
             <p class="text-zinc-400 leading-relaxed pl-3 border-l border-zinc-800">${escapeHtml(problem.description)}</p>
           </div>
- 
+
           <div>
             <h2 class="text-sm font-semibold text-zinc-200 mb-3 flex items-center gap-2">
               <span class="w-1 h-4 bg-accent rounded-full"></span> Solution architecture
@@ -410,7 +435,7 @@ function renderSingleProblem(id) {
             <p class="text-zinc-400 leading-relaxed pl-3 border-l border-zinc-800">${escapeHtml(problem.solution_logic)}</p>
           </div>
         </div>
- 
+
         <div class="lg:sticky lg:top-24">
           <div class="rounded-xl border border-zinc-800 bg-zinc-900/70 overflow-hidden">
             <div class="flex items-center justify-between px-4 py-3 border-b border-zinc-800 bg-zinc-900">
@@ -420,8 +445,17 @@ function renderSingleProblem(id) {
                 <span class="w-2.5 h-2.5 rounded-full bg-easy/80"></span>
               </div>
               <span class="font-mono text-xs text-zinc-500">solution.py</span>
+              <button
+                id="copy-code-btn"
+                class="flex items-center gap-1.5 text-xs font-mono text-zinc-500 hover:text-accent-soft transition-colors duration-200 px-2 py-1 rounded-md hover:bg-zinc-800/60"
+              >
+                <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                </svg>
+                <span id="copy-code-label">Copy</span>
+              </button>
             </div>
-            <pre class="p-5 overflow-x-auto text-sm leading-relaxed font-mono text-zinc-300"><code>${escapeHtml(problem.python_code)}</code></pre>
+            <pre id="code-panel" class="p-5 overflow-x-auto text-sm leading-relaxed font-mono !bg-transparent"><code class="language-python">${escapeHtml(problem.python_code)}</code></pre>
             <div class="grid grid-cols-3 divide-x divide-zinc-800 border-t border-zinc-800">
               <div class="px-4 py-3">
                 <p class="text-xs text-zinc-600 mb-1">Time</p>
@@ -441,12 +475,34 @@ function renderSingleProblem(id) {
       </div>
     </section>
   `;
+
+  const codeBlock = document.querySelector('#code-panel code');
+  if (codeBlock && window.hljs) {
+    hljs.highlightElement(codeBlock);
+  }
+
+  const copyBtn = document.getElementById('copy-code-btn');
+  const copyLabel = document.getElementById('copy-code-label');
+  copyBtn?.addEventListener('click', async () => {
+    try {
+      await navigator.clipboard.writeText(problem.python_code);
+      copyLabel.textContent = 'Copied!';
+      copyBtn.classList.add('text-easy');
+      setTimeout(() => {
+        copyLabel.textContent = 'Copy';
+        copyBtn.classList.remove('text-easy');
+      }, 1600);
+    } catch (err) {
+      copyLabel.textContent = 'Failed';
+      setTimeout(() => { copyLabel.textContent = 'Copy'; }, 1600);
+    }
+  });
 }
- 
+
 // view: My Journey
 function renderJourney() {
   const solvedCategories = new Set(state.problems.map(p => p.category));
- 
+
   const items = CATEGORY_ORDER.map((cat, i) => {
     const solved = solvedCategories.has(cat);
     const count = state.problems.filter(p => p.category === cat).length;
@@ -464,13 +520,13 @@ function renderJourney() {
         </div>
       </div>`;
   }).join('');
- 
+
   root.innerHTML = `
     <section class="max-w-3xl mx-auto px-6 pt-16 pb-24">
       <p class="font-mono text-xs text-accent-soft mb-2">Progression</p>
       <h1 class="text-3xl font-bold text-zinc-50 tracking-tight mb-2">My journey through Blind 75</h1>
       <p class="text-zinc-500 mb-12">Moving category by category, from array fundamentals to dynamic programming.</p>
- 
+
       <div class="relative">
         <div class="absolute left-4 top-2 bottom-2 w-px bg-zinc-800"></div>
         ${items}
@@ -478,17 +534,17 @@ function renderJourney() {
     </section>
   `;
 }
- 
+
 // view: analytics
 function renderAnalytics() {
   const problems = state.problems;
   const total = problems.length || 1;
- 
+
   const byDifficulty = { Easy: [], Medium: [], Hard: [] };
   problems.forEach(p => { if (byDifficulty[p.difficulty]) byDifficulty[p.difficulty].push(p); });
- 
+
   const avgLoc = (arr) => arr.length ? Math.round(arr.reduce((s, p) => s + p.loc, 0) / arr.length) : 0;
- 
+
   const dsGuess = (p) => {
     const t = (p.category + ' ' + p.title + ' ' + p.solution_logic).toLowerCase();
     if (t.includes('hash') || t.includes('map')) return 'Hash Map';
@@ -500,7 +556,7 @@ function renderAnalytics() {
     if (t.includes('array') || t.includes('pointer') || t.includes('window')) return 'Array';
     return 'Array';
   };
- 
+
   const dsCounts = {};
   problems.forEach(p => {
     const ds = dsGuess(p);
@@ -508,17 +564,17 @@ function renderAnalytics() {
   });
   const dsSorted = Object.entries(dsCounts).sort((a, b) => b[1] - a[1]);
   const maxDs = dsSorted.length ? dsSorted[0][1] : 1;
- 
+
   const catCounts = {};
   problems.forEach(p => { catCounts[p.category] = (catCounts[p.category] || 0) + 1; });
   const maxCat = Math.max(1, ...Object.values(catCounts));
- 
+
   root.innerHTML = `
     <section class="max-w-7xl mx-auto px-6 pt-16 pb-24">
       <p class="font-mono text-xs text-accent-soft mb-2">Insights</p>
       <h1 class="text-3xl font-bold text-zinc-50 tracking-tight mb-2">Analytics</h1>
       <p class="text-zinc-500 mb-12">A read-out of patterns across ${problems.length} logged solution${problems.length === 1 ? '' : 's'}.</p>
- 
+
       <div class="grid lg:grid-cols-2 gap-8 mb-12">
         <div class="rounded-xl border border-zinc-800 bg-zinc-900/30 p-6">
           <h2 class="text-sm font-semibold text-zinc-200 mb-5">Most used data structures</h2>
@@ -535,7 +591,7 @@ function renderAnalytics() {
               </div>`).join('') || `<p class="text-sm text-zinc-600">Not enough data yet.</p>`}
           </div>
         </div>
- 
+
         <div class="rounded-xl border border-zinc-800 bg-zinc-900/30 p-6">
           <h2 class="text-sm font-semibold text-zinc-200 mb-5">Average LOC per difficulty</h2>
           <div class="space-y-4">
@@ -550,7 +606,7 @@ function renderAnalytics() {
           </div>
         </div>
       </div>
- 
+
       <div class="rounded-xl border border-zinc-800 bg-zinc-900/30 p-6">
         <h2 class="text-sm font-semibold text-zinc-200 mb-5">Coverage by category</h2>
         <div class="grid sm:grid-cols-2 gap-x-8 gap-y-4">
@@ -572,16 +628,17 @@ function renderAnalytics() {
     </section>
   `;
 }
- 
+
 // router
 async function router() {
   await loadProblems();
- 
+
+  root.classList.add('opacity-0');
+  await new Promise(resolve => setTimeout(resolve, 180));
+
   const hash = window.location.hash.replace(/^#/, '') || 'home';
   const [routeName, param] = hash.split('/');
- 
-  root.style.opacity = '0';
- 
+
   switch (routeName) {
     case 'home':
       setActiveNav('home');
@@ -611,14 +668,12 @@ async function router() {
       setActiveNav('home');
       renderHome();
   }
- 
-  requestAnimationFrame(() => {
-    root.style.transition = 'opacity 0.25s ease';
-    root.style.opacity = '1';
-  });
- 
+
   window.scrollTo({ top: 0, behavior: 'instant' in window ? 'instant' : 'auto' });
+
+  requestAnimationFrame(() => root.classList.remove('opacity-0'));
 }
+
 // search wiring
 function wireSearchInput(input) {
   if (!input) return;
@@ -631,15 +686,14 @@ function wireSearchInput(input) {
     window.location.hash = `search/${encodeURIComponent(q)}`;
   }, 250));
 }
- 
+
 wireSearchInput(document.getElementById('global-search'));
 wireSearchInput(document.getElementById('global-search-mobile'));
- 
+
 document.getElementById('mobile-menu-btn')?.addEventListener('click', () => {
   document.getElementById('mobile-menu')?.classList.toggle('hidden');
 });
- 
+
 // boot
 window.addEventListener('hashchange', router);
 window.addEventListener('DOMContentLoaded', router);
- 
