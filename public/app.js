@@ -196,13 +196,15 @@ function problemCard(p) {
 
 // view: Home
 function renderHome() {
-  const problems = state.problems;
+  const problems = state.problems || [];
+  const solved = problems.length;
+  const total = 75;
+  const progressPct = Math.min(100, Math.round((solved / total) * 100)) || 0;
+
   const counts = { Easy: 0, Medium: 0, Hard: 0 };
   problems.forEach(p => { if (counts[p.difficulty] !== undefined) counts[p.difficulty]++; });
-  const progressPct = Math.min(100, Math.round((problems.length / 75) * 100));
 
   const topByDiff = (diff) => problems.filter(p => p.difficulty === diff).slice(0, 3);
-
   const tierColumn = (diff) => {
     const items = topByDiff(diff);
     if (items.length === 0) {
@@ -211,7 +213,7 @@ function renderHome() {
     return items.map(p => `
       <a href="#problem/${p.id}" class="group flex items-center justify-between gap-3 py-3 border-b border-zinc-800/70 last:border-0 hover:pl-1 transition-all duration-200">
         <div class="min-w-0">
-          <p class="text-sm text-zinc-200 group-hover:text-accent-soft transition-colors duration-200 truncate">${escapeHtml(p.title)}</p>
+          <p class="text-sm text-zinc-200 group-hover:text-accent-soft transition-colors duration-200 truncate">${p.title}</p>
           <p class="text-xs text-zinc-600 font-mono mt-0.5">${p.time_complexity} · ${p.loc} loc</p>
         </div>
         <svg class="w-4 h-4 text-zinc-700 group-hover:text-accent-soft shrink-0 transition-colors duration-200" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" /></svg>
@@ -219,102 +221,115 @@ function renderHome() {
   };
 
   root.innerHTML = `
-    <section class="relative overflow-hidden">
-      <div class="absolute -top-32 left-1/2 -translate-x-1/2 w-[680px] h-[680px] bg-gradient-to-br from-purple-500/25 via-accent/20 to-blue-500/10 rounded-full blur-3xl pointer-events-none"></div>
-      <div class="absolute top-1/3 -right-20 w-[420px] h-[420px] bg-blue-500/10 rounded-full blur-3xl pointer-events-none"></div>
+    <section class="relative overflow-hidden bg-zinc-950">
+      <!-- Glow decorativ pe fundal -->
+      <div class="absolute -top-32 left-1/2 -translate-x-1/2 w-[680px] h-[680px] bg-gradient-to-br from-purple-500/20 to-blue-500/10 rounded-full blur-3xl pointer-events-none z-0"></div>
 
-      <div class="relative max-w-7xl mx-auto px-6 pt-24 pb-20">
+      <div class="relative max-w-7xl mx-auto px-6 pt-24 pb-20 z-20">
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
-          <div class="stagger" id="hero-stagger">
-            <h1 class="text-5xl lg:text-7xl font-bold text-white leading-tight tracking-tight">
-              Mastering the Blind 75.
+          
+          <!-- COLOANA STÂNGA: Titlu masiv și Butoane -->
+          <div class="relative z-30 opacity-100">
+            <h1 class="text-5xl lg:text-7xl font-extrabold text-white leading-tight tracking-tight mb-6">
+              Mastering the <br/>
+              <span class="text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-blue-500">Blind 75</span>
             </h1>
-            <p class="text-lg text-zinc-400 mt-6 leading-relaxed">
+            <p class="text-lg text-zinc-300 leading-relaxed mb-10 max-w-md">
               A comprehensive log of my algorithmic journey, focusing on clean code, optimal complexities, and detailed explanations.
             </p>
-            <a href="https://github.com/edvt-exe" target="_blank" rel="noopener noreferrer" class="mt-8 inline-flex items-center justify-center gap-2.5 px-8 py-3.5 bg-zinc-100 text-zinc-900 font-semibold rounded-full hover:bg-white transition-colors">
-              <svg class="w-5 h-5" viewBox="0 0 24 24" fill="currentColor"><path d="M12 .5C5.73.5.98 5.24.98 11.52c0 4.98 3.23 9.2 7.71 10.69.56.1.77-.24.77-.54 0-.27-.01-1.16-.02-2.1-3.14.68-3.8-1.34-3.8-1.34-.51-1.31-1.25-1.66-1.25-1.66-1.02-.7.08-.68.08-.68 1.13.08 1.72 1.16 1.72 1.16 1 1.72 2.63 1.22 3.27.93.1-.73.39-1.22.71-1.5-2.51-.29-5.15-1.26-5.15-5.6 0-1.24.44-2.25 1.16-3.04-.12-.29-.5-1.45.11-3.02 0 0 .95-.3 3.11 1.16a10.8 10.8 0 0 1 5.66 0c2.16-1.46 3.11-1.16 3.11-1.16.61 1.57.23 2.73.11 3.02.72.79 1.16 1.8 1.16 3.04 0 4.35-2.65 5.31-5.17 5.59.4.35.76 1.03.76 2.08 0 1.5-.01 2.71-.01 3.08 0 .3.2.65.78.54A11.03 11.03 0 0 0 23.02 11.5C23.02 5.24 18.27.5 12 .5Z"/></svg>
-              View on GitHub
-            </a>
+            
+            <div class="flex flex-wrap items-center gap-4">
+              <a href="https://github.com/edvt-exe" target="_blank" rel="noopener noreferrer" 
+                 class="inline-flex items-center justify-center gap-2.5 px-8 py-3.5 bg-white text-black font-semibold rounded-full hover:bg-zinc-200 transition-colors duration-200 shadow-lg">
+                <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                  <path fill-rule="evenodd" d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z" clip-rule="evenodd" />
+                </svg>
+                View on GitHub
+              </a>
+              <button id="surprise-me-btn" class="inline-flex items-center justify-center px-8 py-3.5 bg-zinc-800 text-zinc-100 font-semibold rounded-full border border-zinc-700 hover:bg-zinc-700 transition-colors duration-200">
+                Surprise Me ✨
+              </button>
+            </div>
           </div>
 
-          <div class="rounded-2xl border border-zinc-800 bg-zinc-900/40 backdrop-blur-sm p-8">
+          <!-- COLOANA DREAPTĂ: Cardul de progres -->
+          <div class="relative z-30 rounded-2xl border border-zinc-800 bg-zinc-900/80 p-8 shadow-xl">
             <div class="flex items-end justify-between mb-5">
               <div>
-                <p class="font-mono text-xs text-accent-soft mb-1">Blind 75 progress</p>
-                <p class="font-mono text-3xl font-bold text-zinc-50">${problems.length}<span class="text-zinc-600 text-lg">/75</span></p>
+                <p class="font-mono text-xs text-purple-400 mb-1">Blind 75 progress</p>
+                <p class="font-mono text-3xl font-bold text-zinc-50">${solved}<span class="text-zinc-600 text-lg">/75</span></p>
               </div>
               <p class="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-blue-500">${progressPct}%</p>
             </div>
             <div class="h-2 rounded-full bg-zinc-800 overflow-hidden mb-8">
-              <div
-                class="h-full rounded-full bg-gradient-to-r from-purple-400 to-blue-500 transition-[width] duration-700 ease-out"
-                style="width:${progressPct}%"
-              ></div>
+              <div class="h-full rounded-full bg-gradient-to-r from-purple-400 to-blue-500" style="width:${progressPct}%"></div>
             </div>
 
-            <p class="font-mono text-xs text-accent-soft mb-3">About this log</p>
+            <p class="font-mono text-xs text-purple-400 mb-3">About this log</p>
             <p class="text-zinc-300 leading-relaxed text-sm">
               This portfolio tracks my progress through the Blind 75 — arrays, trees, graphs, and dynamic programming, one clean solution at a time.
             </p>
-            <p class="text-zinc-500 leading-relaxed mt-3 text-sm">
+            <p class="text-zinc-400 leading-relaxed mt-3 text-sm">
               Every entry is written twice: once to solve it, once to explain it clearly. The focus stays on algorithmic reasoning, not just a passing test case.
             </p>
-            <div class="mt-6 pt-6 border-t border-zinc-800/70 flex flex-wrap items-center gap-5 text-xs text-zinc-500">
-              <span class="flex items-center gap-1.5"><span class="w-1.5 h-1.5 rounded-full bg-easy"></span>Clean code</span>
-              <span class="flex items-center gap-1.5"><span class="w-1.5 h-1.5 rounded-full bg-medium"></span>Big O first</span>
-              <span class="flex items-center gap-1.5"><span class="w-1.5 h-1.5 rounded-full bg-hard"></span>No shortcuts</span>
+            <div class="mt-6 pt-6 border-t border-zinc-800/70 flex flex-wrap items-center gap-5 text-xs text-zinc-500 font-mono">
+              <span class="flex items-center gap-1.5"><span class="w-1.5 h-1.5 rounded-full bg-green-400"></span>Clean code</span>
+              <span class="flex items-center gap-1.5"><span class="w-1.5 h-1.5 rounded-full bg-yellow-400"></span>Big O first</span>
+              <span class="flex items-center gap-1.5"><span class="w-1.5 h-1.5 rounded-full bg-red-400"></span>No shortcuts</span>
             </div>
           </div>
         </div>
       </div>
     </section>
 
-    <section class="border-y border-zinc-800/70 bg-zinc-900/20">
+    <!-- STATISTICI SUBSOL HERO -->
+    <section class="border-y border-zinc-800/70 bg-zinc-900/40 relative z-20">
       <div class="max-w-7xl mx-auto px-6 py-10">
         <div class="grid grid-cols-3 gap-6">
-          <div class="rounded-xl border border-zinc-800 bg-zinc-900/30 p-6 text-center sm:text-left">
-            <p class="text-3xl sm:text-4xl font-bold font-mono text-easy" data-counter="${counts.Easy}">0</p>
+          <div class="rounded-xl border border-zinc-800 bg-zinc-900/60 p-6">
+            <p class="text-3xl sm:text-4xl font-bold font-mono text-green-400" data-counter="${counts.Easy}">0</p>
             <p class="text-sm text-zinc-500 mt-1">Easy solved</p>
           </div>
-          <div class="rounded-xl border border-zinc-800 bg-zinc-900/30 p-6 text-center sm:text-left">
-            <p class="text-3xl sm:text-4xl font-bold font-mono text-medium" data-counter="${counts.Medium}">0</p>
+          <div class="rounded-xl border border-zinc-800 bg-zinc-900/60 p-6">
+            <p class="text-3xl sm:text-4xl font-bold font-mono text-yellow-400" data-counter="${counts.Medium}">0</p>
             <p class="text-sm text-zinc-500 mt-1">Medium solved</p>
           </div>
-          <div class="rounded-xl border border-zinc-800 bg-zinc-900/30 p-6 text-center sm:text-left">
-            <p class="text-3xl sm:text-4xl font-bold font-mono text-hard" data-counter="${counts.Hard}">0</p>
+          <div class="rounded-xl border border-zinc-800 bg-zinc-900/60 p-6">
+            <p class="text-3xl sm:text-4xl font-bold font-mono text-red-400" data-counter="${counts.Hard}">0</p>
             <p class="text-sm text-zinc-500 mt-1">Hard solved</p>
           </div>
         </div>
       </div>
     </section>
 
+    <!-- TOP TIER SOLUTIONS -->
     <section class="max-w-7xl mx-auto px-6 py-20">
       <div class="flex items-baseline justify-between mb-8">
         <h2 class="text-xl font-semibold text-zinc-100">Top tier solutions</h2>
-        <a href="#problems" class="text-sm text-accent-soft hover:text-accent transition-colors duration-200">View all →</a>
+        <a href="#problems" class="text-sm text-purple-400 hover:text-purple-300 transition-colors duration-200">View all →</a>
       </div>
       <div class="grid md:grid-cols-3 gap-6">
-        <div class="rounded-xl border border-zinc-800 p-5">
-          <h3 class="text-sm font-semibold text-easy mb-3">Easy</h3>
+        <div class="rounded-xl border border-zinc-800 bg-zinc-900/20 p-5">
+          <h3 class="text-sm font-semibold text-green-400 mb-3">Easy</h3>
           <div>${tierColumn('Easy')}</div>
         </div>
-        <div class="rounded-xl border border-zinc-800 p-5">
-          <h3 class="text-sm font-semibold text-medium mb-3">Medium</h3>
+        <div class="rounded-xl border border-zinc-800 bg-zinc-900/20 p-5">
+          <h3 class="text-sm font-semibold text-yellow-400 mb-3">Medium</h3>
           <div>${tierColumn('Medium')}</div>
         </div>
-        <div class="rounded-xl border border-zinc-800 p-5">
-          <h3 class="text-sm font-semibold text-hard mb-3">Hard</h3>
+        <div class="rounded-xl border border-zinc-800 bg-zinc-900/20 p-5">
+          <h3 class="text-sm font-semibold text-red-400 mb-3">Hard</h3>
           <div>${tierColumn('Hard')}</div>
         </div>
       </div>
     </section>
 
-    <section class="border-t border-zinc-800/70">
+    <!-- METHODOLOGY -->
+    <section class="border-t border-zinc-800/70 bg-zinc-900/10">
       <div class="max-w-7xl mx-auto px-6 py-24">
         <div class="grid lg:grid-cols-[1fr,1.3fr] gap-12 items-start">
           <div>
-            <p class="font-mono text-xs text-accent-soft mb-3">Methodology</p>
+            <p class="font-mono text-xs text-purple-400 mb-3">Methodology</p>
             <h2 class="text-3xl font-bold text-zinc-50 mb-4 tracking-tight">The optimization mindset</h2>
             <p class="text-zinc-400 leading-relaxed">
               Every solution here starts brute-force, then gets pushed until the complexity can't drop any further without sacrificing readability. The goal isn't the cleverest one-liner — it's the version a teammate could read once and trust.
@@ -322,29 +337,29 @@ function renderHome() {
           </div>
           <div class="grid sm:grid-cols-2 gap-4">
             <div class="rounded-xl border border-zinc-800 bg-zinc-900/30 p-5 hover:border-zinc-700 transition-colors duration-200">
-              <div class="w-9 h-9 rounded-lg bg-accent/10 flex items-center justify-center mb-4">
-                <svg class="w-4.5 h-4.5 text-accent-soft" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+              <div class="w-9 h-9 rounded-lg bg-purple-500/10 flex items-center justify-center mb-4">
+                <svg class="w-4.5 h-4.5 text-purple-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
               </div>
               <h3 class="text-zinc-100 font-medium mb-1.5">Start brute, then cut</h3>
               <p class="text-sm text-zinc-500 leading-relaxed">Every problem begins with the naive O(n²) or worse — the baseline every later optimization is measured against.</p>
             </div>
             <div class="rounded-xl border border-zinc-800 bg-zinc-900/30 p-5 hover:border-zinc-700 transition-colors duration-200">
-              <div class="w-9 h-9 rounded-lg bg-accent/10 flex items-center justify-center mb-4">
-                <svg class="w-4.5 h-4.5 text-accent-soft" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
+              <div class="w-9 h-9 rounded-lg bg-purple-500/10 flex items-center justify-center mb-4">
+                <svg class="w-4.5 h-4.5 text-purple-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
               </div>
               <h3 class="text-zinc-100 font-medium mb-1.5">Trade space deliberately</h3>
               <p class="text-sm text-zinc-500 leading-relaxed">Hash maps, prefix sums, and memoization tables are used on purpose — every extra byte of space buys a specific drop in time.</p>
             </div>
             <div class="rounded-xl border border-zinc-800 bg-zinc-900/30 p-5 hover:border-zinc-700 transition-colors duration-200">
-              <div class="w-9 h-9 rounded-lg bg-accent/10 flex items-center justify-center mb-4">
-                <svg class="w-4.5 h-4.5 text-accent-soft" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h7"/></svg>
+              <div class="w-9 h-9 rounded-lg bg-purple-500/10 flex items-center justify-center mb-4">
+                <svg class="w-4.5 h-4.5 text-purple-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h7"/></svg>
               </div>
               <h3 class="text-zinc-100 font-medium mb-1.5">Fewer lines, same clarity</h3>
               <p class="text-sm text-zinc-500 leading-relaxed">LOC is tracked per solution not to golf the code, but to notice when a shorter version is genuinely easier to follow.</p>
             </div>
             <div class="rounded-xl border border-zinc-800 bg-zinc-900/30 p-5 hover:border-zinc-700 transition-colors duration-200">
-              <div class="w-9 h-9 rounded-lg bg-accent/10 flex items-center justify-center mb-4">
-                <svg class="w-4.5 h-4.5 text-accent-soft" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+              <div class="w-9 h-9 rounded-lg bg-purple-500/10 flex items-center justify-center mb-4">
+                <svg class="w-4.5 h-4.5 text-purple-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
               </div>
               <h3 class="text-zinc-100 font-medium mb-1.5">Complexity is the scoreboard</h3>
               <p class="text-sm text-zinc-500 leading-relaxed">Big O isn't a footnote — it's the first thing recorded for every problem, before the code is even considered finished.</p>
@@ -355,18 +370,18 @@ function renderHome() {
     </section>
   `;
 
-  animateCounters();
-  const hero = document.getElementById('hero-stagger');
-  if (hero) {
-    hero.style.opacity = '1';
-    hero.classList.add('animate-fadeUp');
+  if (typeof animateCounters === 'function') {
+    animateCounters();
   }
 
-  document.getElementById('surprise-me-btn')?.addEventListener('click', () => {
-    if (state.problems.length === 0) return;
-    const random = state.problems[Math.floor(Math.random() * state.problems.length)];
-    window.location.hash = `problem/${random.id}`;
-  });
+  const surpriseBtn = document.getElementById('surprise-me-btn');
+  if (surpriseBtn) {
+    surpriseBtn.addEventListener('click', () => {
+      if (problems.length === 0) return;
+      const random = problems[Math.floor(Math.random() * problems.length)];
+      window.location.hash = `problem/${random.id}`;
+    });
+  }
 }
 
 function animateCounters() {
