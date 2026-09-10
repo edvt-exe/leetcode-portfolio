@@ -566,7 +566,7 @@ function renderSingleProblem(id) {
         </button>
       </div>
 
-      <div class="grid lg:grid-cols-2 gap-12 items-start">
+      <div class="grid lg:grid-cols-[1.2fr,1fr] gap-12 items-start">
         <div>
           <div class="flex flex-wrap items-center gap-3 mb-4">
             <span class="font-mono text-xs text-zinc-600">#${String(problem.id).padStart(3, '0')}</span>
@@ -575,21 +575,25 @@ function renderSingleProblem(id) {
             ${struggleMeterHtml(problem.struggle_rating)}
             <span class="ml-auto">${bookmarkButtonHtml(problem.id, 'lg')}</span>
           </div>
-          <h1 class="text-3xl sm:text-4xl font-bold text-zinc-50 tracking-tight mb-6">${escapeHtml(problem.title)}</h1>
-          <p class="text-zinc-400 leading-relaxed mb-10">${escapeHtml(problem.description)}</p>
-
-          <div class="mb-10">
-            <h2 class="text-sm font-semibold text-zinc-200 mb-3 flex items-center gap-2">
-              <span class="w-1 h-4 bg-accent rounded-full"></span> Problem breakdown
-            </h2>
-            <p class="text-zinc-400 leading-relaxed pl-3 border-l border-zinc-800">${escapeHtml(problem.description)}</p>
+          <h1 class="text-3xl sm:text-4xl font-bold text-zinc-50 tracking-tight mb-8">${escapeHtml(problem.title)}</h1>
+          
+          <!-- Descrierea HTML direct de la LeetHub (fără escapeHtml) -->
+          <div class="text-zinc-400 leading-relaxed text-sm space-y-4 mb-12 [&>pre]:bg-zinc-900/50 [&>pre]:p-4 [&>pre]:rounded-lg [&>pre]:border [&>pre]:border-zinc-800 [&>code]:bg-zinc-800 [&>code]:px-1.5 [&>code]:rounded-md">
+            ${problem.description}
           </div>
 
+          <!-- Modulul viitor de editare a soluției -->
           <div>
-            <h2 class="text-sm font-semibold text-zinc-200 mb-3 flex items-center gap-2">
-              <span class="w-1 h-4 bg-accent rounded-full"></span> Solution architecture
+            <h2 class="text-sm font-semibold text-zinc-200 mb-4 flex items-center justify-between">
+              <span class="flex items-center gap-2"><span class="w-1 h-4 bg-accent rounded-full"></span> My Solution Notes</span>
             </h2>
-            <p class="text-zinc-400 leading-relaxed pl-3 border-l border-zinc-800">${escapeHtml(problem.solution_logic)}</p>
+            <div class="rounded-xl border border-dashed border-zinc-700 bg-zinc-900/20 p-8 text-center transition-colors hover:border-zinc-500 hover:bg-zinc-900/40 group">
+              <p class="text-sm text-zinc-500 mb-4">${escapeHtml(problem.solution_logic)}</p>
+              <button class="inline-flex items-center gap-2 px-4 py-2 bg-zinc-800 text-xs font-semibold text-zinc-300 rounded-md group-hover:bg-accent group-hover:text-white transition-colors duration-200 shadow-sm cursor-not-allowed">
+                <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
+                Edit Solution (Coming Soon)
+              </button>
+            </div>
           </div>
         </div>
 
