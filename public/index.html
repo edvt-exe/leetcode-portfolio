@@ -2,8 +2,8 @@
 <html lang="en" class="scroll-smooth">
 <head>
 <meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>LeetCode Blind 75 — Solved</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0" href="https://github.com/edvt-exe" target="_blank" rel="noopener noreferrer" class="mt-8 inline-flex items-center justify-center gap-2.5 px-8 py-3.5 bg-zinc-100 text-zinc-900 font-semibold rounded-full hover:bg-white transition-colors" > />
+<title>Blind 75 — Solved</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -11,6 +11,7 @@
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/vs2015.min.css">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/python.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
 <script>
   tailwind.config = {
     theme: {
@@ -74,6 +75,22 @@
   body.focus-mode #app-root {
     padding-top: 2.5rem;
   }
+  .flip-card { perspective: 1200px; }
+  .flip-card-inner {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    transition: transform 0.6s cubic-bezier(0.4, 0.2, 0.2, 1);
+    transform-style: preserve-3d;
+  }
+  .flip-card.is-flipped .flip-card-inner { transform: rotateY(180deg); }
+  .flip-card-face {
+    position: absolute;
+    inset: 0;
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
+  }
+  .flip-card-back { transform: rotateY(180deg); }
 </style>
 </head>
 <body class="bg-zinc-950 text-zinc-200 font-sans antialiased min-h-screen noise-bg">
@@ -104,6 +121,8 @@
         <a href="#problems" data-route="problems" class="nav-link px-3 py-2 rounded-md text-zinc-400 hover:text-zinc-100 hover:bg-zinc-900 transition-colors duration-200">All Problems</a>
         <a href="#journey" data-route="journey" class="nav-link px-3 py-2 rounded-md text-zinc-400 hover:text-zinc-100 hover:bg-zinc-900 transition-colors duration-200">Journey</a>
         <a href="#analytics" data-route="analytics" class="nav-link px-3 py-2 rounded-md text-zinc-400 hover:text-zinc-100 hover:bg-zinc-900 transition-colors duration-200">Analytics</a>
+        <a href="#flashcards" data-route="flashcards" class="nav-link px-3 py-2 rounded-md text-zinc-400 hover:text-zinc-100 hover:bg-zinc-900 transition-colors duration-200">Flashcards</a>
+        <a href="#saved" data-route="saved" class="nav-link px-3 py-2 rounded-md text-zinc-400 hover:text-zinc-100 hover:bg-zinc-900 transition-colors duration-200">Saved</a>
       </div>
 
       <button id="mobile-menu-btn" class="md:hidden text-zinc-400 hover:text-zinc-100">
@@ -125,6 +144,8 @@
         <a href="#problems" class="px-2 py-2 rounded-md text-zinc-400 hover:text-zinc-100">All Problems</a>
         <a href="#journey" class="px-2 py-2 rounded-md text-zinc-400 hover:text-zinc-100">Journey</a>
         <a href="#analytics" class="px-2 py-2 rounded-md text-zinc-400 hover:text-zinc-100">Analytics</a>
+        <a href="#flashcards" class="px-2 py-2 rounded-md text-zinc-400 hover:text-zinc-100">Flashcards</a>
+        <a href="#saved" class="px-2 py-2 rounded-md text-zinc-400 hover:text-zinc-100">Saved</a>
       </div>
     </div>
   </nav>

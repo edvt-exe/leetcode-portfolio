@@ -60,6 +60,43 @@ function bookmarkButtonHtml(id, size = 'sm') {
   </button>`;
 }
 
+// --- Performance ring (runtime / memory beats) ---
+function performanceRingHtml(label, pct, colorVar) {
+  const safePct = Math.max(0, Math.min(100, pct ?? 0));
+  const radius = 26;
+  const circumference = 2 * Math.PI * radius;
+  const offset = circumference * (1 - safePct / 100);
+  return `
+  <div class="flex flex-col items-center gap-2">
+    <svg width="64" height="64" viewBox="0 0 64 64" class="-rotate-90">
+      <circle cx="32" cy="32" r="${radius}" fill="none" stroke="currentColor" stroke-width="5" class="text-zinc-800" />
+      <circle cx="32" cy="32" r="${radius}" fill="none" stroke="${colorVar}" stroke-width="5" stroke-linecap="round"
+        stroke-dasharray="${circumference}" stroke-dashoffset="${offset}" style="transition: stroke-dashoffset 0.7s ease" />
+    </svg>
+    <div class="-mt-11 font-mono text-sm text-zinc-100">${safePct}%</div>
+    <p class="text-[11px] text-zinc-500 mt-6">${label}</p>
+  </div>`;
+}
+
+// --- Struggle meter (1-5 bars) ---
+function struggleMeterHtml(rating = 0) {
+  const bars = [1, 2, 3, 4, 5].map(i => `
+    <span class="w-1.5 h-4 rounded-full ${i <= rating ? 'bg-hard' : 'bg-zinc-800'}"></span>
+  `).join('');
+  return `
+  <div class="flex items-center gap-2" title="Struggle rating: ${rating}/5">
+    <div class="flex items-end gap-0.5">${bars}</div>
+    <span class="text-[11px] font-mono text-zinc-500">${rating}/5 struggle</span>
+  </div>`;
+}
+
+// --- Similar problems (same category, excluding current) ---
+function getSimilarProblems(current, count = 3) {
+  const pool = state.problems.filter(p => p.category === current.category && p.id !== current.id);
+  const shuffled = [...pool].sort(() => Math.random() - 0.5);
+  return shuffled.slice(0, count);
+}
+
 const root = document.getElementById('app-root');
 
 // data
@@ -98,6 +135,7 @@ function debounce(fn, delay) {
 }
 
 let readingProgressHandler = null;
+let analyticsRadarChart = null;
 
 function initReadingProgress() {
   const bar = document.getElementById('reading-progress');
@@ -148,7 +186,7 @@ function problemCard(p) {
     </div>
     <h3 class="text-zinc-100 font-semibold mb-1.5 group-hover:text-accent-soft transition-colors duration-200">${escapeHtml(p.title)}</h3>
     <p class="text-xs text-zinc-500 mb-4">${escapeHtml(p.category)}</p>
-    <div class="flex items-center gap-4 text-xs font-mono text-zinc-500 pt-3 border-t border-zinc-800/70">
+    <div class="flex items-center justify-between text-xs font-mono text-zinc-500 pt-3 border-t border-zinc-800/70">
       <span title="Time complexity">⏱ ${p.time_complexity}</span>
       <span title="Space complexity">▦ ${p.space_complexity}</span>
       <span title="Lines of code">${p.loc} loc</span>
@@ -161,10 +199,11 @@ function renderHome() {
   const problems = state.problems;
   const counts = { Easy: 0, Medium: 0, Hard: 0 };
   problems.forEach(p => { if (counts[p.difficulty] !== undefined) counts[p.difficulty]++; });
+  const progressPct = Math.min(100, Math.round((problems.length / 75) * 100));
 
   const topByDiff = (diff) => problems.filter(p => p.difficulty === diff).slice(0, 3);
 
-  const tierColumn = (diff, colorClass) => {
+  const tierColumn = (diff) => {
     const items = topByDiff(diff);
     if (items.length === 0) {
       return `<div class="rounded-xl border border-dashed border-zinc-800 p-6 text-center text-sm text-zinc-600">More ${diff.toLowerCase()} solutions on the way.</div>`;
@@ -180,59 +219,77 @@ function renderHome() {
   };
 
   root.innerHTML = `
-    <section class="max-w-7xl mx-auto px-6 pt-24 pb-20">
-      <div class="max-w-3xl stagger" id="hero-stagger">
-        <p class="font-mono text-xs text-accent-soft mb-4">Blind 75 · Interactive Problem Log</p>
-        <h1 class="text-4xl sm:text-5xl md:text-6xl font-bold text-zinc-50 tracking-tight leading-[1.1] mb-6">
-          Seventy-five problems.<br class="hidden sm:block" /> One way of thinking about complexity.
-        </h1>
-        <p class="text-lg text-zinc-400 max-w-xl leading-relaxed">
-          A running log of solved interview problems — annotated with reasoning, time and space complexity, and the code behind each one.
-        </p>
-        <div class="flex flex-wrap gap-3 mt-8">
-          <a href="#problems" class="px-5 py-2.5 rounded-lg bg-accent hover:bg-accent-soft text-white text-sm font-medium transition-colors duration-200">Browse all problems</a>
-          <button id="surprise-me-btn" class="px-5 py-2.5 rounded-lg border border-zinc-800 hover:border-accent-soft/60 text-zinc-300 hover:text-accent-soft text-sm font-medium transition-colors duration-200 flex items-center gap-2">
-            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
-            </svg>
-            Surprise me
-          </button>
-          <a href="#journey" class="px-5 py-2.5 rounded-lg border border-zinc-800 hover:border-zinc-700 text-zinc-300 text-sm font-medium transition-colors duration-200">See the journey</a>
-        </div>
+    <section class="relative overflow-hidden">
+      <div class="absolute -top-32 left-1/2 -translate-x-1/2 w-[680px] h-[680px] bg-gradient-to-br from-purple-500/25 via-accent/20 to-blue-500/10 rounded-full blur-3xl pointer-events-none"></div>
+      <div class="absolute top-1/3 -right-20 w-[420px] h-[420px] bg-blue-500/10 rounded-full blur-3xl pointer-events-none"></div>
 
-        <div class="mt-10 max-w-md">
-          <div class="flex items-baseline justify-between mb-2">
-            <span class="text-xs font-mono text-zinc-500">Blind 75 progress</span>
-            <span class="text-xs font-mono text-accent-soft">${problems.length}/75 · ${Math.round((problems.length / 75) * 100)}%</span>
+      <div class="relative max-w-7xl mx-auto px-6 pt-24 pb-20">
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+          <div class="stagger" id="hero-stagger">
+            <h1 class="text-5xl lg:text-7xl font-bold text-white leading-tight tracking-tight">
+              Mastering the Blind 75.
+            </h1>
+            <p class="text-lg text-zinc-400 mt-6 leading-relaxed">
+              A comprehensive log of my algorithmic journey, focusing on clean code, optimal complexities, and detailed explanations.
+            </p>
+            <a href="https://github.com/edvt-exe" target="_blank" rel="noopener noreferrer" class="mt-8 inline-flex items-center justify-center gap-2.5 px-8 py-3.5 bg-zinc-100 text-zinc-900 font-semibold rounded-full hover:bg-white transition-colors">
+              <svg class="w-5 h-5" viewBox="0 0 24 24" fill="currentColor"><path d="M12 .5C5.73.5.98 5.24.98 11.52c0 4.98 3.23 9.2 7.71 10.69.56.1.77-.24.77-.54 0-.27-.01-1.16-.02-2.1-3.14.68-3.8-1.34-3.8-1.34-.51-1.31-1.25-1.66-1.25-1.66-1.02-.7.08-.68.08-.68 1.13.08 1.72 1.16 1.72 1.16 1 1.72 2.63 1.22 3.27.93.1-.73.39-1.22.71-1.5-2.51-.29-5.15-1.26-5.15-5.6 0-1.24.44-2.25 1.16-3.04-.12-.29-.5-1.45.11-3.02 0 0 .95-.3 3.11 1.16a10.8 10.8 0 0 1 5.66 0c2.16-1.46 3.11-1.16 3.11-1.16.61 1.57.23 2.73.11 3.02.72.79 1.16 1.8 1.16 3.04 0 4.35-2.65 5.31-5.17 5.59.4.35.76 1.03.76 2.08 0 1.5-.01 2.71-.01 3.08 0 .3.2.65.78.54A11.03 11.03 0 0 0 23.02 11.5C23.02 5.24 18.27.5 12 .5Z"/></svg>
+              View on GitHub
+            </a>
           </div>
-          <div class="h-1.5 rounded-full bg-zinc-800 overflow-hidden">
-            <div
-              class="h-full bg-gradient-to-r from-accent to-accent-soft rounded-full transition-[width] duration-700 ease-out"
-              style="width:${Math.min(100, (problems.length / 75) * 100)}%"
-            ></div>
+
+          <div class="rounded-2xl border border-zinc-800 bg-zinc-900/40 backdrop-blur-sm p-8">
+            <div class="flex items-end justify-between mb-5">
+              <div>
+                <p class="font-mono text-xs text-accent-soft mb-1">Blind 75 progress</p>
+                <p class="font-mono text-3xl font-bold text-zinc-50">${problems.length}<span class="text-zinc-600 text-lg">/75</span></p>
+              </div>
+              <p class="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-blue-500">${progressPct}%</p>
+            </div>
+            <div class="h-2 rounded-full bg-zinc-800 overflow-hidden mb-8">
+              <div
+                class="h-full rounded-full bg-gradient-to-r from-purple-400 to-blue-500 transition-[width] duration-700 ease-out"
+                style="width:${progressPct}%"
+              ></div>
+            </div>
+
+            <p class="font-mono text-xs text-accent-soft mb-3">About this log</p>
+            <p class="text-zinc-300 leading-relaxed text-sm">
+              This portfolio tracks my progress through the Blind 75 — arrays, trees, graphs, and dynamic programming, one clean solution at a time.
+            </p>
+            <p class="text-zinc-500 leading-relaxed mt-3 text-sm">
+              Every entry is written twice: once to solve it, once to explain it clearly. The focus stays on algorithmic reasoning, not just a passing test case.
+            </p>
+            <div class="mt-6 pt-6 border-t border-zinc-800/70 flex flex-wrap items-center gap-5 text-xs text-zinc-500">
+              <span class="flex items-center gap-1.5"><span class="w-1.5 h-1.5 rounded-full bg-easy"></span>Clean code</span>
+              <span class="flex items-center gap-1.5"><span class="w-1.5 h-1.5 rounded-full bg-medium"></span>Big O first</span>
+              <span class="flex items-center gap-1.5"><span class="w-1.5 h-1.5 rounded-full bg-hard"></span>No shortcuts</span>
+            </div>
           </div>
         </div>
       </div>
     </section>
 
-    <section class="max-w-7xl mx-auto px-6 pb-20">
-      <div class="grid grid-cols-3 gap-4 sm:gap-6">
-        <div class="rounded-xl border border-zinc-800 bg-zinc-900/30 p-6">
-          <p class="text-3xl sm:text-4xl font-bold font-mono text-easy" data-counter="${counts.Easy}">0</p>
-          <p class="text-sm text-zinc-500 mt-1">Easy solved</p>
-        </div>
-        <div class="rounded-xl border border-zinc-800 bg-zinc-900/30 p-6">
-          <p class="text-3xl sm:text-4xl font-bold font-mono text-medium" data-counter="${counts.Medium}">0</p>
-          <p class="text-sm text-zinc-500 mt-1">Medium solved</p>
-        </div>
-        <div class="rounded-xl border border-zinc-800 bg-zinc-900/30 p-6">
-          <p class="text-3xl sm:text-4xl font-bold font-mono text-hard" data-counter="${counts.Hard}">0</p>
-          <p class="text-sm text-zinc-500 mt-1">Hard solved</p>
+    <section class="border-y border-zinc-800/70 bg-zinc-900/20">
+      <div class="max-w-7xl mx-auto px-6 py-10">
+        <div class="grid grid-cols-3 gap-6">
+          <div class="rounded-xl border border-zinc-800 bg-zinc-900/30 p-6 text-center sm:text-left">
+            <p class="text-3xl sm:text-4xl font-bold font-mono text-easy" data-counter="${counts.Easy}">0</p>
+            <p class="text-sm text-zinc-500 mt-1">Easy solved</p>
+          </div>
+          <div class="rounded-xl border border-zinc-800 bg-zinc-900/30 p-6 text-center sm:text-left">
+            <p class="text-3xl sm:text-4xl font-bold font-mono text-medium" data-counter="${counts.Medium}">0</p>
+            <p class="text-sm text-zinc-500 mt-1">Medium solved</p>
+          </div>
+          <div class="rounded-xl border border-zinc-800 bg-zinc-900/30 p-6 text-center sm:text-left">
+            <p class="text-3xl sm:text-4xl font-bold font-mono text-hard" data-counter="${counts.Hard}">0</p>
+            <p class="text-sm text-zinc-500 mt-1">Hard solved</p>
+          </div>
         </div>
       </div>
     </section>
 
-    <section class="max-w-7xl mx-auto px-6 pb-24">
+    <section class="max-w-7xl mx-auto px-6 py-20">
       <div class="flex items-baseline justify-between mb-8">
         <h2 class="text-xl font-semibold text-zinc-100">Top tier solutions</h2>
         <a href="#problems" class="text-sm text-accent-soft hover:text-accent transition-colors duration-200">View all →</a>
@@ -328,21 +385,26 @@ function animateCounters() {
 }
 
 // view: All Problems / Category directory
-function renderProblemsDirectory(initialFilters = {}) {
-  const categories = [...new Set(state.problems.map(p => p.category))];
+function renderProblemsDirectory(options = {}) {
+  const sourceProblems = options.sourceProblems || state.problems;
+  const eyebrow = options.eyebrow || 'Directory';
+  const title = options.title || 'All problems';
+  const subtitle = options.subtitle || `${sourceProblems.length} problem${sourceProblems.length === 1 ? '' : 's'} logged so far.`;
+  const emptyMessage = options.emptyMessage || 'No problems match these filters yet.';
+  const categories = [...new Set(sourceProblems.map(p => p.category))];
 
   const filters = {
-    difficulty: initialFilters.difficulty || 'All',
-    category: initialFilters.category || 'All',
-    sort: initialFilters.sort || 'id-asc'
+    difficulty: options.difficulty || 'All',
+    category: options.category || 'All',
+    sort: options.sort || 'id-asc'
   };
 
   root.innerHTML = `
     <section class="max-w-7xl mx-auto px-6 pt-16 pb-24">
       <div class="mb-10">
-        <p class="font-mono text-xs text-accent-soft mb-2">Directory</p>
-        <h1 class="text-3xl font-bold text-zinc-50 tracking-tight">All problems</h1>
-        <p class="text-zinc-500 mt-2">${state.problems.length} problems logged so far.</p>
+        <p class="font-mono text-xs text-accent-soft mb-2">${escapeHtml(eyebrow)}</p>
+        <h1 class="text-3xl font-bold text-zinc-50 tracking-tight">${escapeHtml(title)}</h1>
+        <p class="text-zinc-500 mt-2">${escapeHtml(subtitle)}</p>
       </div>
 
       <div class="flex flex-wrap items-center gap-3 mb-8 p-4 rounded-xl border border-zinc-800 bg-zinc-900/30">
@@ -387,7 +449,7 @@ function renderProblemsDirectory(initialFilters = {}) {
 
   function applyAndRender() {
     const grid = document.getElementById('problems-grid');
-    let list = [...state.problems];
+    let list = [...sourceProblems];
 
     if (filters.difficulty !== 'All') list = list.filter(p => p.difficulty === filters.difficulty);
     if (filters.category !== 'All') list = list.filter(p => p.category === filters.category);
@@ -410,7 +472,7 @@ function renderProblemsDirectory(initialFilters = {}) {
     }
 
     if (list.length === 0) {
-      grid.innerHTML = `<div class="col-span-full text-center py-16 text-zinc-600 border border-dashed border-zinc-800 rounded-xl">No problems match these filters yet.</div>`;
+      grid.innerHTML = `<div class="col-span-full text-center py-16 text-zinc-600 border border-dashed border-zinc-800 rounded-xl">${escapeHtml(emptyMessage)}</div>`;
       return;
     }
     grid.innerHTML = list.map(problemCard).join('');
@@ -421,6 +483,20 @@ function renderProblemsDirectory(initialFilters = {}) {
   document.getElementById('filter-sort').addEventListener('change', e => { filters.sort = e.target.value; applyAndRender(); });
 
   applyAndRender();
+}
+
+// view: Saved Problems (reuses the directory layout, filtered to bookmarks)
+function renderSavedProblems() {
+  const savedIds = getBookmarks();
+  const savedProblems = state.problems.filter(p => savedIds.includes(String(p.id)));
+
+  renderProblemsDirectory({
+    sourceProblems: savedProblems,
+    eyebrow: 'Saved',
+    title: 'Saved problems',
+    subtitle: `${savedProblems.length} problem${savedProblems.length === 1 ? '' : 's'} saved for review.`,
+    emptyMessage: "You haven't saved any problems yet — tap the bookmark icon on a card to add one here."
+  });
 }
 
 // view: Search Results
@@ -478,10 +554,11 @@ function renderSingleProblem(id) {
 
       <div class="grid lg:grid-cols-2 gap-12 items-start">
         <div>
-          <div class="flex items-center gap-3 mb-4">
+          <div class="flex flex-wrap items-center gap-3 mb-4">
             <span class="font-mono text-xs text-zinc-600">#${String(problem.id).padStart(3, '0')}</span>
             ${difficultyBadge(problem.difficulty)}
             <span class="text-xs text-zinc-600">${escapeHtml(problem.category)}</span>
+            ${struggleMeterHtml(problem.struggle_rating)}
             <span class="ml-auto">${bookmarkButtonHtml(problem.id, 'lg')}</span>
           </div>
           <h1 class="text-3xl sm:text-4xl font-bold text-zinc-50 tracking-tight mb-6">${escapeHtml(problem.title)}</h1>
@@ -523,32 +600,57 @@ function renderSingleProblem(id) {
             </div>
             <pre id="code-panel" class="p-5 overflow-x-auto text-sm leading-relaxed font-mono !bg-transparent"><code class="language-python">${escapeHtml(problem.python_code)}</code></pre>
             <div class="grid grid-cols-3 divide-x divide-zinc-800 border-t border-zinc-800">
-              <div class="px-4 py-3">
+              <div class="px-4 py-3 flex flex-col items-center text-center">
                 <p class="text-xs text-zinc-600 mb-1">Time</p>
                 <p class="font-mono text-sm text-accent-soft">${problem.time_complexity}</p>
               </div>
-              <div class="px-4 py-3">
+              <div class="px-4 py-3 flex flex-col items-center text-center">
                 <p class="text-xs text-zinc-600 mb-1">Space</p>
                 <p class="font-mono text-sm text-accent-soft">${problem.space_complexity}</p>
               </div>
-              <div class="px-4 py-3">
+              <div class="px-4 py-3 flex flex-col items-center text-center">
                 <p class="text-xs text-zinc-600 mb-1">Lines</p>
                 <p class="font-mono text-sm text-accent-soft">${problem.loc}</p>
               </div>
             </div>
+            <div class="flex items-center justify-around border-t border-zinc-800 py-5">
+              ${performanceRingHtml('Runtime beats', problem.runtime_beats, '#3DDC97')}
+              ${performanceRingHtml('Memory beats', problem.memory_beats, '#8B7CF6')}
+            </div>
           </div>
         </div>
       </div>
+
+      ${(() => {
+        const similar = getSimilarProblems(problem);
+        if (similar.length === 0) return '';
+        return `
+        <div class="mt-16 pt-10 border-t border-zinc-800/70">
+          <h2 class="text-sm font-semibold text-zinc-200 mb-5 flex items-center gap-2">
+            <span class="w-1 h-4 bg-accent rounded-full"></span> Similar problems
+          </h2>
+          <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            ${similar.map(p => `
+              <a href="#problem/${p.id}" class="group flex items-center justify-between gap-3 rounded-lg border border-zinc-800 bg-zinc-900/30 px-4 py-3 hover:border-accent-soft/50 transition-colors duration-200">
+                <div class="min-w-0">
+                  <p class="text-sm text-zinc-200 group-hover:text-accent-soft transition-colors duration-200 truncate">${escapeHtml(p.title)}</p>
+                  <p class="text-xs text-zinc-600 mt-0.5">${escapeHtml(p.category)}</p>
+                </div>
+                ${difficultyBadge(p.difficulty)}
+              </a>`).join('')}
+          </div>
+        </div>`;
+      })()}
     </section>
   `;
 
-  // trigger syntax highlighting now that the code block exists in the DOM
+  // Trigger syntax highlighting now that the code block exists in the DOM
   const codeBlock = document.querySelector('#code-panel code');
   if (codeBlock && window.hljs) {
     hljs.highlightElement(codeBlock);
   }
 
-  // wire the copy-to-clipboard button
+  // Wire the copy-to-clipboard button
   const copyBtn = document.getElementById('copy-code-btn');
   const copyLabel = document.getElementById('copy-code-label');
   copyBtn?.addEventListener('click', async () => {
@@ -566,10 +668,10 @@ function renderSingleProblem(id) {
     }
   });
 
-  // reading progress bar is only active on this view
+  // Reading progress bar is only active on this view
   initReadingProgress();
 
-  // wire the Focus mode toggle
+  // Wire the Focus mode toggle
   document.getElementById('focus-mode-btn')?.addEventListener('click', () => {
     document.body.classList.toggle('focus-mode');
   });
@@ -701,8 +803,146 @@ function renderAnalytics() {
           }).join('')}
         </div>
       </div>
+
+      <div class="rounded-xl border border-zinc-800 bg-zinc-900/30 p-6 mt-8">
+        <h2 class="text-sm font-semibold text-zinc-200 mb-5">Competence radar</h2>
+        <div class="max-w-lg mx-auto">
+          <canvas id="competence-radar" height="280"></canvas>
+        </div>
+      </div>
     </section>
   `;
+
+  renderCompetenceRadar(catCounts);
+}
+
+function renderCompetenceRadar(catCounts) {
+  const canvas = document.getElementById('competence-radar');
+  if (!canvas || !window.Chart) return;
+
+  if (analyticsRadarChart) {
+    analyticsRadarChart.destroy();
+    analyticsRadarChart = null;
+  }
+
+  const labels = CATEGORY_ORDER.filter(cat => (catCounts[cat] || 0) > 0);
+  const data = labels.map(cat => catCounts[cat] || 0);
+
+  if (labels.length < 3) return; // Chart.js radar needs at least 3 axes to be meaningful
+
+  analyticsRadarChart = new Chart(canvas.getContext('2d'), {
+    type: 'radar',
+    data: {
+      labels,
+      datasets: [{
+        label: 'Problems solved',
+        data,
+        backgroundColor: 'rgba(108, 92, 233, 0.18)',
+        borderColor: '#8B7CF6',
+        borderWidth: 2,
+        pointBackgroundColor: '#8B7CF6',
+        pointRadius: 3
+      }]
+    },
+    options: {
+      responsive: true,
+      scales: {
+        r: {
+          angleLines: { color: 'rgba(63, 63, 70, 0.6)' },
+          grid: { color: 'rgba(63, 63, 70, 0.6)' },
+          pointLabels: { color: '#a1a1aa', font: { size: 11 } },
+          ticks: { display: false, stepSize: 1, beginAtZero: true }
+        }
+      },
+      plugins: { legend: { display: false } }
+    }
+  });
+}
+
+// view: Flashcards (Spaced Repetition)
+function pickRandomProblem(excludeId = null) {
+  const pool = excludeId ? state.problems.filter(p => String(p.id) !== String(excludeId)) : state.problems;
+  const source = pool.length ? pool : state.problems;
+  return source[Math.floor(Math.random() * source.length)];
+}
+
+function renderFlashcards() {
+  if (state.problems.length === 0) {
+    root.innerHTML = `
+      <section class="max-w-xl mx-auto px-6 pt-24 pb-24 text-center">
+        <p class="text-zinc-500">No problems logged yet — add some to start reviewing.</p>
+      </section>`;
+    return;
+  }
+
+  const card = pickRandomProblem();
+
+  root.innerHTML = `
+    <section class="max-w-2xl mx-auto px-6 pt-16 pb-24">
+      <div class="mb-10 text-center">
+        <p class="font-mono text-xs text-accent-soft mb-2">Spaced Repetition</p>
+        <h1 class="text-3xl font-bold text-zinc-50 tracking-tight mb-2">Flashcard mode</h1>
+        <p class="text-zinc-500">Click the card to flip it. Try to recall the approach before you peek.</p>
+      </div>
+
+      <div id="flip-card" class="flip-card w-full h-80 cursor-pointer mb-8" data-id="${card.id}">
+        <div class="flip-card-inner">
+          <div class="flip-card-face flip-card-front rounded-2xl border border-zinc-800 bg-zinc-900/60 flex flex-col items-center justify-center text-center px-8">
+            ${difficultyBadge(card.difficulty)}
+            <h2 class="text-2xl font-bold text-zinc-50 mt-4">${escapeHtml(card.title)}</h2>
+            <p class="text-sm text-zinc-500 mt-2">${escapeHtml(card.category)}</p>
+            <p class="text-xs text-zinc-600 mt-8 font-mono">Click to reveal →</p>
+          </div>
+          <div class="flip-card-face flip-card-back rounded-2xl border border-accent-soft/40 bg-zinc-900 flex flex-col items-center justify-center text-center px-8">
+            <div class="flex items-center gap-4 font-mono text-sm text-accent-soft mb-4">
+              <span>${card.time_complexity}</span>
+              <span class="text-zinc-700">·</span>
+              <span>${card.space_complexity}</span>
+            </div>
+            <p class="text-sm text-zinc-400 leading-relaxed max-h-40 overflow-y-auto">${escapeHtml(card.solution_logic)}</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="flex items-center justify-center gap-3">
+        <a href="#problem/${card.id}" class="px-4 py-2 rounded-lg border border-zinc-800 hover:border-zinc-700 text-sm text-zinc-300 transition-colors duration-200">View full problem</a>
+        <button id="next-card-btn" class="px-5 py-2.5 rounded-lg bg-accent hover:bg-accent-soft text-white text-sm font-medium transition-colors duration-200">Next card</button>
+      </div>
+    </section>
+  `;
+
+  const flipCard = document.getElementById('flip-card');
+  flipCard?.addEventListener('click', () => flipCard.classList.toggle('is-flipped'));
+
+  document.getElementById('next-card-btn')?.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const currentId = flipCard?.dataset.id;
+    const next = pickRandomProblem(currentId);
+    window.location.hash = 'flashcards';
+    // Same hash won't retrigger hashchange, so re-render directly with a fresh pick
+    renderFlashcardFace(next);
+  });
+}
+
+function renderFlashcardFace(card) {
+  const flipCard = document.getElementById('flip-card');
+  if (!flipCard) return;
+  flipCard.classList.remove('is-flipped');
+  flipCard.dataset.id = card.id;
+  flipCard.querySelector('.flip-card-front').innerHTML = `
+    ${difficultyBadge(card.difficulty)}
+    <h2 class="text-2xl font-bold text-zinc-50 mt-4">${escapeHtml(card.title)}</h2>
+    <p class="text-sm text-zinc-500 mt-2">${escapeHtml(card.category)}</p>
+    <p class="text-xs text-zinc-600 mt-8 font-mono">Click to reveal →</p>`;
+  flipCard.querySelector('.flip-card-back').innerHTML = `
+    <div class="flex items-center gap-4 font-mono text-sm text-accent-soft mb-4">
+      <span>${card.time_complexity}</span>
+      <span class="text-zinc-700">·</span>
+      <span>${card.space_complexity}</span>
+    </div>
+    <p class="text-sm text-zinc-400 leading-relaxed max-h-40 overflow-y-auto">${escapeHtml(card.solution_logic)}</p>`;
+  const viewLink = document.querySelector('#app-root a[href^="#problem/"]');
+  if (viewLink) viewLink.setAttribute('href', `#problem/${card.id}`);
 }
 
 // router
@@ -725,6 +965,10 @@ function renderRoute() {
 
   document.body.classList.remove('focus-mode');
   teardownReadingProgress();
+  if (routeName !== 'analytics' && analyticsRadarChart) {
+    analyticsRadarChart.destroy();
+    analyticsRadarChart = null;
+  }
 
   switch (routeName) {
     case 'home':
@@ -750,6 +994,14 @@ function renderRoute() {
     case 'analytics':
       setActiveNav('analytics');
       renderAnalytics();
+      break;
+    case 'flashcards':
+      setActiveNav('flashcards');
+      renderFlashcards();
+      break;
+    case 'saved':
+      setActiveNav('saved');
+      renderSavedProblems();
       break;
     default:
       setActiveNav('home');
@@ -779,7 +1031,7 @@ document.getElementById('mobile-menu-btn')?.addEventListener('click', () => {
   document.getElementById('mobile-menu')?.classList.toggle('hidden');
 });
 
-// delegated bookmark toggle — works for every card and the single problem view
+// Delegated bookmark toggle — works for every card and the single-problem view
 root.addEventListener('click', (e) => {
   const btn = e.target.closest('[data-bookmark-id]');
   if (!btn) return;
@@ -792,6 +1044,22 @@ root.addEventListener('click', (e) => {
   btn.classList.toggle('border-zinc-800', !nowActive);
   btn.classList.toggle('text-zinc-500', !nowActive);
   btn.querySelector('svg').setAttribute('fill', nowActive ? 'currentColor' : 'none');
+
+  // On the Saved page, un-bookmarking should remove the card immediately
+  const onSavedRoute = window.location.hash.replace(/^#/, '').split('/')[0] === 'saved';
+  if (onSavedRoute && !nowActive) {
+    const card = btn.closest('#problems-grid > a');
+    if (card) {
+      card.classList.add('transition-opacity', 'duration-300', 'opacity-0');
+      setTimeout(() => {
+        card.remove();
+        const grid = document.getElementById('problems-grid');
+        if (grid && grid.children.length === 0) {
+          grid.innerHTML = `<div class="col-span-full text-center py-16 text-zinc-600 border border-dashed border-zinc-800 rounded-xl">You haven't saved any problems yet — tap the bookmark icon on a card to add one here.</div>`;
+        }
+      }, 300);
+    }
+  }
 });
 
 // boot
