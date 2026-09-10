@@ -560,7 +560,6 @@ function renderSingleProblem(id) {
           All problems
         </a>
         <button id="focus-mode-btn" class="flex items-center gap-1.5 text-xs font-mono text-zinc-500 hover:text-accent-soft transition-colors duration-200 px-2.5 py-1.5 rounded-md border border-zinc-800 hover:border-accent-soft/40">
-          <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
             <path stroke-linecap="round" stroke-linejoin="round" d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7" />
           </svg>
           Focus mode

@@ -1,0 +1,35 @@
+name: Auto-Sync LeetHub to Portfolio
+
+on:
+  push:
+    branches:
+      - main
+    paths-ignore:
+      - 'public/database.json'
+      - 'README.md'
+
+jobs:
+  sync-database:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: Run Sync Script
+        run: python scripts/sync.py
+
+      - name: Commit and Push Changes
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "chore(sync): auto-update database and README [skip ci]"
+          file_pattern: public/database.json README.md
+          commit_user_name: "github-actions[bot]"
+          commit_user_email: "github-actions[bot]@users.noreply.github.com"
