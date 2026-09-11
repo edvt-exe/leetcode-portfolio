@@ -1,6 +1,7 @@
 import os
 import re
 import json
+import subprocess
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 PORTFOLIO_ROOT = os.path.abspath(os.path.join(SCRIPT_DIR, '..'))
@@ -201,6 +202,41 @@ def parse_leethub_readme(filepath):
     except Exception:
         return "Description unavailable.", "O(unknown)", "O(unknown)", None, None
 
+def get_git_commit_info(item_path):
+    time_comp, space_comp = "O(n)", "O(n)"
+    runtime_beats, memory_beats = 0, 0
+    solved_at = ""
+    try:
+        result = subprocess.run(
+            ['git', 'log', '-1', '--pretty=%B', '--', '.'],
+            cwd=item_path, 
+            capture_output=True, text=True, check=True
+        )
+        commit_msg = result.stdout
+
+        time_match = re.search(r'(?i)(?:Time Complexity|Time):\s*(O\([^)]+\))', commit_msg)
+        space_match = re.search(r'(?i)(?:Space Complexity|Space):\s*(O\([^)]+\))', commit_msg)
+        
+        runtime_match = re.search(r'Time:\s*[\d.]+\s*\w+\s*\(([\d.]+)%\)', commit_msg, re.IGNORECASE)
+        memory_match = re.search(r'Space:\s*[\d.]+\s*[KMG]?[Bb]\s*\(([\d.]+)%\)', commit_msg, re.IGNORECASE)
+
+        if time_match: time_comp = time_match.group(1)
+        if space_match: space_comp = space_match.group(1)
+        if runtime_match: runtime_beats = round(float(runtime_match.group(1)))
+        if memory_match: memory_beats = round(float(memory_match.group(1)))
+
+        date_result = subprocess.run(
+            ['git', 'log', '-1', '--format=%ai', '--', '.'],
+            cwd=item_path, 
+            capture_output=True, text=True, check=True
+        )
+        solved_at = date_result.stdout.strip()
+
+    except Exception:
+        pass
+        
+    return time_comp, space_comp, runtime_beats, memory_beats, solved_at
+
 def generate_readme(problems):
     total = len(problems)
     counts = {"Easy": 0, "Medium": 0, "Hard": 0}
@@ -229,6 +265,7 @@ def generate_readme(problems):
 
     with open(README_PATH, 'w', encoding='utf-8') as f:
         f.write('\n'.join(lines))
+
 
 def main():
     abs_root = SOLUTIONS_ROOT
@@ -278,6 +315,11 @@ def main():
             description, time_comp, space_comp, detected_difficulty, readme_title = \
                 parse_leethub_readme(os.path.join(item_path, readme_file))
 
+        git_time, git_space, git_runtime, git_memory, git_date = get_git_commit_info(item_path)
+        
+        final_time = git_time if git_time != "O(n)" else time_comp
+        final_space = git_space if git_space != "O(n)" else space_comp
+
         best_title = readme_title or slug_title
         existing = existing_problems.get(prob_id, {})
 
@@ -289,23 +331,36 @@ def main():
         existing_difficulty = existing.get('difficulty')
         resolved_difficulty = existing_difficulty or detected_difficulty or 'Medium'
 
+        db_time = existing.get('time_complexity', final_time)
+        if db_time == "O(n)" and final_time != "O(n)":
+            db_time = final_time
+            
+        db_space = existing.get('space_complexity', final_space)
+        if db_space == "O(n)" and final_space != "O(n)":
+            db_space = final_space
+
         problem_data = {
             "id": prob_id,
             "title": existing.get('title', best_title),
             "folder_name": item,
             "category": resolved_category,
             "difficulty": resolved_difficulty,
-            "time_complexity": existing.get('time_complexity', time_comp),
-            "space_complexity": existing.get('space_complexity', space_comp),
+            "time_complexity": db_time,
+            "space_complexity": db_space,
             "loc": loc if loc > 0 else existing.get('loc', 0),
             "description": description if description else existing.get('description', ''),
-            "solution_logic": existing.get('solution_logic', 'Personal solution explanation coming soon.'),
-            "python_code": python_code if python_code else existing.get('python_code', '')
+            "solution_logic": existing.get('solution_logic', ''),
+            "python_code": python_code if python_code else existing.get('python_code', ''),
+            "solved_at": git_date or existing.get('solved_at', '1970-01-01 00:00:00')
         }
 
-        problem_data['runtime_beats'] = existing.get('runtime_beats', 0)
-        problem_data['memory_beats'] = existing.get('memory_beats', 0)
-        problem_data['struggle_rating'] = existing.get('struggle_rating', 1)
+        db_runtime = existing.get('runtime_beats', 0)
+        problem_data['runtime_beats'] = db_runtime if db_runtime > 0 else git_runtime
+        
+        db_memory = existing.get('memory_beats', 0)
+        problem_data['memory_beats'] = db_memory if db_memory > 0 else git_memory
+        
+        problem_data['struggle_rating'] = existing.get('struggle_rating', 0)
 
         updated_problems.append(problem_data)
 

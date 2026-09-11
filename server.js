@@ -34,7 +34,44 @@ app.get('/api/problems/:id', (req, res) => {
   }
 });
 
-app.get('/*splat', (req, res) => {
+app.put('/api/problems/:id', express.json(), (req, res) => {
+  const problemId = parseInt(req.params.id);
+  const updates = req.body;
+
+  try {
+    if (!fs.existsSync(DB_PATH)) {
+      return res.status(404).json({ error: 'Database not found.' });
+    }
+
+    const data = loadDatabase();
+    let updated = false;
+
+    for (let p of data.problems || []) {
+      if (Number(p.id) === problemId) {
+        if (updates.solution_logic !== undefined) {
+          p.solution_logic = updates.solution_logic;
+        }
+        if (updates.struggle_rating !== undefined) {
+          p.struggle_rating = updates.struggle_rating;
+        }
+        updated = true;
+        break;
+      }
+    }
+
+    if (updated) {
+      fs.writeFileSync(DB_PATH, JSON.stringify(data, null, 2), 'utf-8');
+      return res.json({ status: 'success' });
+    } else {
+      return res.status(404).json({ error: 'Problem not found.' });
+    }
+  } catch (err) {
+    console.error('Eroare la salvarea în database.json:', err);
+    return res.status(500).json({ error: 'Failed to update problem.' });
+  }
+});
+
+app.get(/.*/, (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 

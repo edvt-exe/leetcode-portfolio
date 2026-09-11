@@ -32,6 +32,7 @@ const DIFF_STYLES = {
 };
 
 const BOOKMARK_KEY = 'bookmarked_problems';
+const SOLUTIONS_REPO_URL = 'https://github.com/edvt-exe/leetcode-explained';
 
 function getBookmarks() {
   try { return JSON.parse(localStorage.getItem(BOOKMARK_KEY)) || []; }
@@ -60,7 +61,6 @@ function bookmarkButtonHtml(id, size = 'sm') {
   </button>`;
 }
 
-// --- Performance ring (runtime / memory beats) ---
 function performanceRingHtml(label, pct, colorVar) {
   const safePct = Math.max(0, Math.min(100, pct ?? 0));
   const radius = 26;
@@ -78,19 +78,23 @@ function performanceRingHtml(label, pct, colorVar) {
   </div>`;
 }
 
-// --- Struggle meter (1-5 bars) ---
-function struggleMeterHtml(rating = 0) {
-  const bars = [1, 2, 3, 4, 5].map(i => `
-    <span class="w-1.5 h-4 rounded-full ${i <= rating ? 'bg-hard' : 'bg-zinc-800'}"></span>
-  `).join('');
+function struggleMeterHtml(rating = 0, interactive = false) {
+  const colors = ['bg-white', 'bg-green-500', 'bg-yellow-500', 'bg-orange-500', 'bg-red-500'];
+  const bars = [1, 2, 3, 4, 5].map(i => {
+    const bg = i <= rating ? colors[i - 1] : 'bg-zinc-800';
+    return interactive 
+      ? `<button data-rating="${i}" class="rating-bar w-2 h-5 rounded-full transition-colors hover:bg-zinc-400 cursor-pointer ${bg}"></button>`
+      : `<div class="w-2 h-5 rounded-full ${bg}"></div>`;
+  }).join('');
+  
   return `
-  <div class="flex items-center gap-2" title="Struggle rating: ${rating}/5">
-    <div class="flex items-end gap-0.5">${bars}</div>
-    <span class="text-[11px] font-mono text-zinc-500">${rating}/5 struggle</span>
+  <div class="flex items-center gap-3 bg-zinc-900/50 px-4 py-2 rounded-lg border border-zinc-800/80" title="Personal Review of Struggle: ${rating}/5">
+    <span class="text-xs text-zinc-400 font-medium">Personal Review of Struggle:</span>
+    <div class="flex items-end gap-1" id="struggle-bars-container">${bars}</div>
+    <span class="text-xs font-mono text-zinc-300" id="struggle-text-label">${rating}/5</span>
   </div>`;
 }
 
-// --- Similar problems (same category, excluding current) ---
 function getSimilarProblems(current, count = 3) {
   const pool = state.problems.filter(p => p.category === current.category && p.id !== current.id);
   const shuffled = [...pool].sort(() => Math.random() - 0.5);
@@ -177,7 +181,7 @@ function problemCard(p) {
   return `
   <a href="#problem/${p.id}" class="group relative block rounded-xl border border-zinc-800 bg-zinc-900/40 p-5 hover:border-accent-soft/60 hover:bg-zinc-900/70 transition-all duration-300 overflow-hidden">
     <div class="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 bg-gradient-to-br from-accent/5 to-transparent pointer-events-none"></div>
-    <div class="flex items-start justify-between mb-3 relative">
+    <div class="flex items-center justify-between mb-3 relative">
       <span class="font-mono text-xs text-zinc-600">#${String(p.id).padStart(3, '0')}</span>
       <div class="flex items-center gap-2">
         ${difficultyBadge(p.difficulty)}
@@ -187,201 +191,101 @@ function problemCard(p) {
     <h3 class="text-zinc-100 font-semibold mb-1.5 group-hover:text-accent-soft transition-colors duration-200">${escapeHtml(p.title)}</h3>
     <p class="text-xs text-zinc-500 mb-4">${escapeHtml(p.category)}</p>
     <div class="flex items-center justify-between text-xs font-mono text-zinc-500 pt-3 border-t border-zinc-800/70">
-      <span title="Time complexity">⏱ ${p.time_complexity}</span>
-      <span title="Space complexity">▦ ${p.space_complexity}</span>
+      <span title="Runtime beats">⚡ ${p.runtime_beats || 0}% beats</span>
+      <span title="Memory beats">🧠 ${p.memory_beats || 0}% beats</span>
       <span title="Lines of code">${p.loc} loc</span>
     </div>
   </a>`;
 }
 
 // view: Home
+// view: Home
 function renderHome() {
-  const problems = state.problems || [];
-  const solved = problems.length;
-  const total = 75;
-  const progressPct = Math.min(100, Math.round((solved / total) * 100)) || 0;
-
+  const total = state.problems.length;
   const counts = { Easy: 0, Medium: 0, Hard: 0 };
-  problems.forEach(p => { if (counts[p.difficulty] !== undefined) counts[p.difficulty]++; });
+  state.problems.forEach(p => {
+    if (counts[p.difficulty] !== undefined) counts[p.difficulty]++;
+  });
 
-  const topByDiff = (diff) => problems.filter(p => p.difficulty === diff).slice(0, 3);
-  const tierColumn = (diff) => {
-    const items = topByDiff(diff);
-    if (items.length === 0) {
-      return `<div class="rounded-xl border border-dashed border-zinc-800 p-6 text-center text-sm text-zinc-600">More ${diff.toLowerCase()} solutions on the way.</div>`;
-    }
-    return items.map(p => `
-      <a href="#problem/${p.id}" class="group flex items-center justify-between gap-3 py-3 border-b border-zinc-800/70 last:border-0 hover:pl-1 transition-all duration-200">
-        <div class="min-w-0">
-          <p class="text-sm text-zinc-200 group-hover:text-accent-soft transition-colors duration-200 truncate">${p.title}</p>
-          <p class="text-xs text-zinc-600 font-mono mt-0.5">${p.time_complexity} · ${p.loc} loc</p>
-        </div>
-        <svg class="w-4 h-4 text-zinc-700 group-hover:text-accent-soft shrink-0 transition-colors duration-200" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" /></svg>
-      </a>`).join('');
-  };
+  const lastProblems = [...state.problems].sort((a, b) => new Date(b.solved_at || 0) - new Date(a.solved_at || 0)).slice(0, 6);
+  
+  const lastSolvedHtml = lastProblems.length === 0 ? 
+    `<div class="rounded-xl border border-dashed border-zinc-800 p-6 text-center text-sm text-zinc-600">No problems solved yet.</div>` :
+    `<div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+      ${lastProblems.map(p => `
+        <a href="#problem/${p.id}" class="group flex items-center justify-between gap-3 rounded-lg border border-zinc-800 bg-zinc-900/30 px-4 py-3 hover:border-accent-soft/50 transition-colors duration-200">
+          <div class="min-w-0">
+            <div class="flex items-center gap-2 mb-1">
+              <span class="font-mono text-xs text-zinc-600">#${String(p.id).padStart(3, '0')}</span>
+              ${difficultyBadge(p.difficulty)}
+            </div>
+            <p class="text-sm text-zinc-200 group-hover:text-accent-soft transition-colors duration-200 truncate font-medium">${escapeHtml(p.title)}</p>
+            <p class="text-xs text-zinc-600 font-mono mt-1">⚡ ${p.runtime_beats || 0}% · 🧠 ${p.memory_beats || 0}% · ${p.loc} loc</p>
+          </div>
+          <svg class="w-4 h-4 text-zinc-700 group-hover:text-accent-soft shrink-0 transition-colors duration-200" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" /></svg>
+        </a>`).join('')}
+    </div>`;
 
   root.innerHTML = `
-    <section class="relative overflow-hidden bg-zinc-950">
-      <!-- Glow decorativ pe fundal -->
-      <div class="absolute -top-32 left-1/2 -translate-x-1/2 w-[680px] h-[680px] bg-gradient-to-br from-purple-500/20 to-blue-500/10 rounded-full blur-3xl pointer-events-none z-0"></div>
-
-      <div class="relative max-w-7xl mx-auto px-6 pt-24 pb-20 z-20">
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
-          
-          <!-- COLOANA STÂNGA: Titlu masiv și Butoane -->
-          <div class="relative z-30 opacity-100">
-            <h1 class="text-5xl lg:text-7xl font-extrabold text-white leading-tight tracking-tight mb-6">
-              Mastering the <br/>
-              <span class="text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-blue-500">Blind 75</span>
-            </h1>
-            <p class="text-lg text-zinc-300 leading-relaxed mb-10 max-w-md">
-              A comprehensive log of my algorithmic journey, focusing on clean code, optimal complexities, and detailed explanations.
-            </p>
-            
-            <div class="flex flex-wrap items-center gap-4">
-              <a href="https://github.com/edvt-exe" target="_blank" rel="noopener noreferrer" 
-                 class="inline-flex items-center justify-center gap-2.5 px-8 py-3.5 bg-white text-black font-semibold rounded-full hover:bg-zinc-200 transition-colors duration-200 shadow-lg">
-                <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                  <path fill-rule="evenodd" d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z" clip-rule="evenodd" />
-                </svg>
-                View on GitHub
-              </a>
-              <button id="surprise-me-btn" class="inline-flex items-center justify-center px-8 py-3.5 bg-zinc-800 text-zinc-100 font-semibold rounded-full border border-zinc-700 hover:bg-zinc-700 transition-colors duration-200">
-                Surprise Me ✨
-              </button>
-            </div>
+    <section class="max-w-7xl mx-auto px-6 pt-8 pb-24">
+      <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-8 mb-16">
+        <div class="max-w-3xl">
+          <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-zinc-800 bg-zinc-900/50 text-xs font-mono text-zinc-400 mb-6">
+            <span class="w-2 h-2 rounded-full bg-accent animate-pulse"></span>
+            Blind 75 Progress Tracker
           </div>
-
-          <!-- COLOANA DREAPTĂ: Cardul de progres -->
-          <div class="relative z-30 rounded-2xl border border-zinc-800 bg-zinc-900/80 p-8 shadow-xl">
-            <div class="flex items-end justify-between mb-5">
-              <div>
-                <p class="font-mono text-xs text-purple-400 mb-1">Blind 75 progress</p>
-                <p class="font-mono text-3xl font-bold text-zinc-50">${solved}<span class="text-zinc-600 text-lg">/75</span></p>
-              </div>
-              <p class="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-blue-500">${progressPct}%</p>
-            </div>
-            <div class="h-2 rounded-full bg-zinc-800 overflow-hidden mb-8">
-              <div class="h-full rounded-full bg-gradient-to-r from-purple-400 to-blue-500" style="width:${progressPct}%"></div>
-            </div>
-
-            <p class="font-mono text-xs text-purple-400 mb-3">About this log</p>
-            <p class="text-zinc-300 leading-relaxed text-sm">
-              This portfolio tracks my progress through the Blind 75 — arrays, trees, graphs, and dynamic programming, one clean solution at a time.
-            </p>
-            <p class="text-zinc-400 leading-relaxed mt-3 text-sm">
-              Every entry is written twice: once to solve it, once to explain it clearly. The focus stays on algorithmic reasoning, not just a passing test case.
-            </p>
-            <div class="mt-6 pt-6 border-t border-zinc-800/70 flex flex-wrap items-center gap-5 text-xs text-zinc-500 font-mono">
-              <span class="flex items-center gap-1.5"><span class="w-1.5 h-1.5 rounded-full bg-green-400"></span>Clean code</span>
-              <span class="flex items-center gap-1.5"><span class="w-1.5 h-1.5 rounded-full bg-yellow-400"></span>Big O first</span>
-              <span class="flex items-center gap-1.5"><span class="w-1.5 h-1.5 rounded-full bg-red-400"></span>No shortcuts</span>
-            </div>
+          <h1 class="text-4xl sm:text-5xl font-extrabold text-zinc-50 tracking-tight mb-6 leading-tight">
+            Mastering data structures & algorithms, one solution at a time.
+          </h1>
+          <p class="text-zinc-400 text-base sm:text-lg leading-relaxed mb-8">
+            A clean portfolio showcasing Python solutions for the Blind 75 LeetCode challenge, featuring performance metrics, custom notes, and clean UI.
+          </p>
+          <div class="flex flex-wrap items-center gap-4">
+            <a href="#problems" class="inline-flex items-center gap-2 px-5 py-2.5 bg-accent hover:bg-accent-soft text-zinc-950 font-semibold text-sm rounded-lg transition-colors duration-200 shadow-sm">
+              Explore Problems
+              <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M14 5l7 7m0 0l-7 7m7-7H3" /></svg>
+            </a>
+            <a href="${SOLUTIONS_REPO_URL}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-2 px-5 py-2.5 bg-zinc-900 hover:bg-zinc-800 text-zinc-300 font-semibold text-sm rounded-lg border border-zinc-800 transition-colors duration-200">
+              GitHub Repository
+            </a>
           </div>
+        </div>
+
+        <div class="shrink-0 rounded-2xl border border-zinc-800 bg-zinc-900/40 p-6 sm:p-8 text-center min-w-[220px]">
+          <p class="text-xs text-zinc-500 font-mono mb-2 uppercase tracking-wider">Total Progress</p>
+          <p class="text-5xl font-extrabold text-zinc-100 font-mono">${total}<span class="text-lg text-zinc-600 font-normal">/75</span></p>
+          <p class="text-xs text-zinc-500 mt-2">Problems Solved</p>
         </div>
       </div>
-    </section>
 
-    <!-- STATISTICI SUBSOL HERO -->
-    <section class="border-y border-zinc-800/70 bg-zinc-900/40 relative z-20">
-      <div class="max-w-7xl mx-auto px-6 py-10">
-        <div class="grid grid-cols-3 gap-6">
-          <div class="rounded-xl border border-zinc-800 bg-zinc-900/60 p-6">
-            <p class="text-3xl sm:text-4xl font-bold font-mono text-green-400" data-counter="${counts.Easy}">0</p>
-            <p class="text-sm text-zinc-500 mt-1">Easy solved</p>
-          </div>
-          <div class="rounded-xl border border-zinc-800 bg-zinc-900/60 p-6">
-            <p class="text-3xl sm:text-4xl font-bold font-mono text-yellow-400" data-counter="${counts.Medium}">0</p>
-            <p class="text-sm text-zinc-500 mt-1">Medium solved</p>
-          </div>
-          <div class="rounded-xl border border-zinc-800 bg-zinc-900/60 p-6">
-            <p class="text-3xl sm:text-4xl font-bold font-mono text-red-400" data-counter="${counts.Hard}">0</p>
-            <p class="text-sm text-zinc-500 mt-1">Hard solved</p>
-          </div>
+      <!-- Stats Grid (Only Difficulties) -->
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-16">
+        <div class="rounded-xl border border-zinc-800 bg-zinc-900/40 p-5">
+          <p class="text-xs text-easy font-mono mb-1">Easy</p>
+          <p class="text-3xl font-bold text-easy font-mono">${counts.Easy}</p>
+        </div>
+        <div class="rounded-xl border border-zinc-800 bg-zinc-900/40 p-5">
+          <p class="text-xs text-medium font-mono mb-1">Medium</p>
+          <p class="text-3xl font-bold text-medium font-mono">${counts.Medium}</p>
+        </div>
+        <div class="rounded-xl border border-zinc-800 bg-zinc-900/40 p-5">
+          <p class="text-xs text-hard font-mono mb-1">Hard</p>
+          <p class="text-3xl font-bold text-hard font-mono">${counts.Hard}</p>
         </div>
       </div>
-    </section>
 
-    <!-- TOP TIER SOLUTIONS -->
-    <section class="max-w-7xl mx-auto px-6 py-20">
-      <div class="flex items-baseline justify-between mb-8">
-        <h2 class="text-xl font-semibold text-zinc-100">Top tier solutions</h2>
-        <a href="#problems" class="text-sm text-purple-400 hover:text-purple-300 transition-colors duration-200">View all →</a>
-      </div>
-      <div class="grid md:grid-cols-3 gap-6">
-        <div class="rounded-xl border border-zinc-800 bg-zinc-900/20 p-5">
-          <h3 class="text-sm font-semibold text-green-400 mb-3">Easy</h3>
-          <div>${tierColumn('Easy')}</div>
+      <!-- Last problems solved section -->
+      <div>
+        <div class="flex items-center justify-between mb-6">
+          <h2 class="text-lg font-bold text-zinc-100 flex items-center gap-2">
+            <span class="w-1.5 h-5 bg-accent rounded-full"></span> Last problems solved
+          </h2>
+          <a href="#problems" class="text-xs text-zinc-500 hover:text-accent-soft transition-colors duration-200">View all →</a>
         </div>
-        <div class="rounded-xl border border-zinc-800 bg-zinc-900/20 p-5">
-          <h3 class="text-sm font-semibold text-yellow-400 mb-3">Medium</h3>
-          <div>${tierColumn('Medium')}</div>
-        </div>
-        <div class="rounded-xl border border-zinc-800 bg-zinc-900/20 p-5">
-          <h3 class="text-sm font-semibold text-red-400 mb-3">Hard</h3>
-          <div>${tierColumn('Hard')}</div>
-        </div>
-      </div>
-    </section>
-
-    <!-- METHODOLOGY -->
-    <section class="border-t border-zinc-800/70 bg-zinc-900/10">
-      <div class="max-w-7xl mx-auto px-6 py-24">
-        <div class="grid lg:grid-cols-[1fr,1.3fr] gap-12 items-start">
-          <div>
-            <p class="font-mono text-xs text-purple-400 mb-3">Methodology</p>
-            <h2 class="text-3xl font-bold text-zinc-50 mb-4 tracking-tight">The optimization mindset</h2>
-            <p class="text-zinc-400 leading-relaxed">
-              Every solution here starts brute-force, then gets pushed until the complexity can't drop any further without sacrificing readability. The goal isn't the cleverest one-liner — it's the version a teammate could read once and trust.
-            </p>
-          </div>
-          <div class="grid sm:grid-cols-2 gap-4">
-            <div class="rounded-xl border border-zinc-800 bg-zinc-900/30 p-5 hover:border-zinc-700 transition-colors duration-200">
-              <div class="w-9 h-9 rounded-lg bg-purple-500/10 flex items-center justify-center mb-4">
-                <svg class="w-4.5 h-4.5 text-purple-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
-              </div>
-              <h3 class="text-zinc-100 font-medium mb-1.5">Start brute, then cut</h3>
-              <p class="text-sm text-zinc-500 leading-relaxed">Every problem begins with the naive O(n²) or worse — the baseline every later optimization is measured against.</p>
-            </div>
-            <div class="rounded-xl border border-zinc-800 bg-zinc-900/30 p-5 hover:border-zinc-700 transition-colors duration-200">
-              <div class="w-9 h-9 rounded-lg bg-purple-500/10 flex items-center justify-center mb-4">
-                <svg class="w-4.5 h-4.5 text-purple-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
-              </div>
-              <h3 class="text-zinc-100 font-medium mb-1.5">Trade space deliberately</h3>
-              <p class="text-sm text-zinc-500 leading-relaxed">Hash maps, prefix sums, and memoization tables are used on purpose — every extra byte of space buys a specific drop in time.</p>
-            </div>
-            <div class="rounded-xl border border-zinc-800 bg-zinc-900/30 p-5 hover:border-zinc-700 transition-colors duration-200">
-              <div class="w-9 h-9 rounded-lg bg-purple-500/10 flex items-center justify-center mb-4">
-                <svg class="w-4.5 h-4.5 text-purple-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h7"/></svg>
-              </div>
-              <h3 class="text-zinc-100 font-medium mb-1.5">Fewer lines, same clarity</h3>
-              <p class="text-sm text-zinc-500 leading-relaxed">LOC is tracked per solution not to golf the code, but to notice when a shorter version is genuinely easier to follow.</p>
-            </div>
-            <div class="rounded-xl border border-zinc-800 bg-zinc-900/30 p-5 hover:border-zinc-700 transition-colors duration-200">
-              <div class="w-9 h-9 rounded-lg bg-purple-500/10 flex items-center justify-center mb-4">
-                <svg class="w-4.5 h-4.5 text-purple-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-              </div>
-              <h3 class="text-zinc-100 font-medium mb-1.5">Complexity is the scoreboard</h3>
-              <p class="text-sm text-zinc-500 leading-relaxed">Big O isn't a footnote — it's the first thing recorded for every problem, before the code is even considered finished.</p>
-            </div>
-          </div>
-        </div>
+        ${lastSolvedHtml}
       </div>
     </section>
   `;
-
-  if (typeof animateCounters === 'function') {
-    animateCounters();
-  }
-
-  const surpriseBtn = document.getElementById('surprise-me-btn');
-  if (surpriseBtn) {
-    surpriseBtn.addEventListener('click', () => {
-      if (problems.length === 0) return;
-      const random = problems[Math.floor(Math.random() * problems.length)];
-      window.location.hash = `problem/${random.id}`;
-    });
-  }
 }
 
 function animateCounters() {
@@ -415,7 +319,7 @@ function renderProblemsDirectory(options = {}) {
   };
 
   root.innerHTML = `
-    <section class="max-w-7xl mx-auto px-6 pt-16 pb-24">
+    <section class="max-w-7xl mx-auto px-6 pt-8 pb-24">
       <div class="mb-10">
         <p class="font-mono text-xs text-accent-soft mb-2">${escapeHtml(eyebrow)}</p>
         <h1 class="text-3xl font-bold text-zinc-50 tracking-tight">${escapeHtml(title)}</h1>
@@ -525,7 +429,7 @@ function renderSearchResults(query) {
     : [];
 
   root.innerHTML = `
-    <section class="max-w-7xl mx-auto px-6 pt-16 pb-24">
+    <section class="max-w-7xl mx-auto px-6 pt-8 pb-24">
       <p class="font-mono text-xs text-accent-soft mb-2">Search</p>
       <h1 class="text-3xl font-bold text-zinc-50 tracking-tight mb-1">Results for "${escapeHtml(query)}"</h1>
       <p class="text-zinc-500 mb-10">${results.length} match${results.length === 1 ? '' : 'es'} found.</p>
@@ -544,7 +448,7 @@ function renderSingleProblem(id) {
 
   if (!problem) {
     root.innerHTML = `
-      <section class="max-w-3xl mx-auto px-6 pt-24 pb-24 text-center">
+      <section class="max-w-3xl mx-auto px-6 pt-12 pb-24 text-center">
         <p class="font-mono text-xs text-hard mb-3">404</p>
         <h1 class="text-2xl font-bold text-zinc-100 mb-3">This problem hasn't been logged yet</h1>
         <a href="#problems" class="text-accent-soft hover:text-accent transition-colors duration-200 text-sm">← Back to all problems</a>
@@ -553,52 +457,81 @@ function renderSingleProblem(id) {
   }
 
   root.innerHTML = `
-    <section class="max-w-7xl mx-auto px-6 pt-12 pb-24">
-      <div class="flex items-center justify-between mb-8">
+    <section class="max-w-7xl mx-auto px-6 pt-6 pb-24">
+      <div class="flex items-center justify-between mb-6">
         <a href="#problems" class="inline-flex items-center gap-1.5 text-sm text-zinc-500 hover:text-zinc-200 transition-colors duration-200">
           <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7" /></svg>
           All problems
         </a>
-        <button id="focus-mode-btn" class="flex items-center gap-1.5 text-xs font-mono text-zinc-500 hover:text-accent-soft transition-colors duration-200 px-2.5 py-1.5 rounded-md border border-zinc-800 hover:border-accent-soft/40">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7" />
-          </svg>
-          Focus mode
-        </button>
       </div>
 
-      <div class="grid lg:grid-cols-[1.2fr,1fr] gap-12 items-start">
-        <div>
-          <div class="flex flex-wrap items-center gap-3 mb-4">
-            <span class="font-mono text-xs text-zinc-600">#${String(problem.id).padStart(3, '0')}</span>
-            ${difficultyBadge(problem.difficulty)}
-            <span class="text-xs text-zinc-600">${escapeHtml(problem.category)}</span>
-            ${struggleMeterHtml(problem.struggle_rating)}
-            <span class="ml-auto">${bookmarkButtonHtml(problem.id, 'lg')}</span>
+      <div class="grid lg:grid-cols-2 gap-12 items-start">
+        <div class="min-w-0">
+          <div class="flex flex-col gap-4 mb-6 p-4 rounded-xl border border-zinc-800/60 bg-zinc-900/30">
+            <div class="flex flex-wrap items-center justify-center gap-4">
+              <div class="flex items-center gap-2">
+                <span class="text-xs text-zinc-500 uppercase tracking-wider">ID:</span> 
+                <span class="font-mono text-sm text-zinc-200">#${String(problem.id).padStart(3, '0')}</span>
+              </div>
+              <div class="w-px h-4 bg-zinc-700 hidden sm:block"></div>
+              <div class="flex items-center gap-2">
+                <span class="text-xs text-zinc-500 uppercase tracking-wider">Difficulty:</span> 
+                ${difficultyBadge(problem.difficulty)}
+              </div>
+              <div class="w-px h-4 bg-zinc-700 hidden sm:block"></div>
+              <div class="flex items-center gap-2">
+                <span class="text-xs text-zinc-500 uppercase tracking-wider">Category:</span> 
+                <span class="text-sm font-medium text-zinc-300">${escapeHtml(problem.category)}</span>
+              </div>
+            </div>
+            
+            <div class="w-full h-px bg-zinc-800"></div>
+            
+            <div class="flex items-center justify-between mt-1">
+              ${struggleMeterHtml(problem.struggle_rating, true)}
+              
+              ${problem.folder_name ? `
+              <a href="${SOLUTIONS_REPO_URL}/tree/main/${problem.folder_name}" target="_blank" rel="noopener noreferrer" class="flex items-center gap-1.5 text-xs font-mono text-zinc-400 hover:text-accent-soft transition-colors duration-200 px-3 py-1.5 rounded-md border border-zinc-800/80 bg-zinc-900/60 hover:border-accent-soft/40 hover:bg-zinc-900">
+                <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24"><path d="M12 .5C5.73.5.98 5.24.98 11.52c0 4.98 3.23 9.2 7.71 10.69.56.1.77-.24.77-.54 0-.27-.01-1.16-.02-2.1-3.14.68-3.8-1.34-3.8-1.34-.51-1.31-1.25-1.66-1.25-1.66-1.02-.7.08-.68.08-.68 1.13.08 1.72 1.16 1.72 1.16 1 1.72 2.63 1.22 3.27.93.1-.73.39-1.22.71-1.5-2.51-.29-5.15-1.26-5.15-5.6 0-1.24.44-2.25 1.16-3.04-.12-.29-.5-1.45.11-3.02 0 0 .95-.3 3.11 1.16a10.8 10.8 0 0 1 5.66 0c2.16-1.46 3.11-1.16 3.11-1.16.61 1.57.23 2.73.11 3.02.72.79 1.16 1.8 1.16 3.04 0 4.35-2.65 5.31-5.17 5.59.4.35.76 1.03.76 2.08 0 1.5-.01 2.71-.01 3.08 0 .3.2.65.78.54A11.03 11.03 0 0 0 23.02 11.5C23.02 5.24 18.27.5 12 .5Z"/></svg>
+                View on GitHub
+              </a>` : ''}
+
+              ${bookmarkButtonHtml(problem.id, 'lg')}
+            </div>
           </div>
-          <h1 class="text-3xl sm:text-4xl font-bold text-zinc-50 tracking-tight mb-8">${escapeHtml(problem.title)}</h1>
+
+          <h1 class="text-3xl sm:text-4xl font-bold text-zinc-50 tracking-tight mb-8 max-w-2xl border-b border-zinc-800 pb-4">${escapeHtml(problem.title)}</h1>
           
-          <!-- Descrierea HTML direct de la LeetHub (fără escapeHtml) -->
-          <div class="text-zinc-400 leading-relaxed text-sm space-y-4 mb-12 [&>pre]:bg-zinc-900/50 [&>pre]:p-4 [&>pre]:rounded-lg [&>pre]:border [&>pre]:border-zinc-800 [&>code]:bg-zinc-800 [&>code]:px-1.5 [&>code]:rounded-md">
+          <div id="problem-description" class="text-zinc-400 leading-relaxed text-sm space-y-4 mb-16 max-w-2xl break-words overflow-hidden [&>p]:text-zinc-300 [&>ul]:list-disc [&>ul]:pl-5 [&>ul]:space-y-1 [&>ul>li]:text-zinc-400 [&>pre]:bg-zinc-900/80 [&>pre]:p-4 [&>pre]:rounded-xl [&>pre]:border [&>pre]:border-zinc-800/80 [&>pre]:font-mono [&>pre]:text-xs [&>pre]:text-zinc-300 [&>pre]:overflow-x-auto [&>pre]:my-3 [&>code]:bg-zinc-800/80 [&>code]:text-zinc-200 [&>code]:px-1.5 [&>code]:py-0.5 [&>code]:text-xs [&>code]:rounded [&>code]:font-mono">
             ${problem.description}
           </div>
 
-          <!-- Modulul viitor de editare a soluției -->
-          <div>
-            <h2 class="text-sm font-semibold text-zinc-200 mb-4 flex items-center justify-between">
-              <span class="flex items-center gap-2"><span class="w-1 h-4 bg-accent rounded-full"></span> My Solution Notes</span>
+          <div class="max-w-2xl mb-10">
+            <h2 class="text-lg font-bold text-zinc-100 mb-6 flex items-center justify-between border-b border-zinc-800 pb-3">
+              <span class="flex items-center gap-2"><span class="w-1.5 h-5 bg-accent rounded-full"></span> My Solution Notes</span>
             </h2>
-            <div class="rounded-xl border border-dashed border-zinc-700 bg-zinc-900/20 p-8 text-center transition-colors hover:border-zinc-500 hover:bg-zinc-900/40 group">
-              <p class="text-sm text-zinc-500 mb-4">${escapeHtml(problem.solution_logic)}</p>
-              <button class="inline-flex items-center gap-2 px-4 py-2 bg-zinc-800 text-xs font-semibold text-zinc-300 rounded-md group-hover:bg-accent group-hover:text-white transition-colors duration-200 shadow-sm cursor-not-allowed">
-                <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
-                Edit Solution (Coming Soon)
-              </button>
+            <div class="rounded-xl border border-dashed border-zinc-700 bg-zinc-900/20 p-6 transition-colors hover:border-zinc-500 group">
+              <div id="solution-display" class="flex flex-col items-start text-left">
+                <p class="text-sm text-zinc-400 mb-5 whitespace-pre-wrap w-full">${escapeHtml(problem.solution_logic || "Nu ai adăugat notițe pentru această problemă încă.")}</p>
+                <button id="edit-solution-btn" class="inline-flex self-center items-center gap-2 px-4 py-2 bg-zinc-800 text-xs font-semibold text-zinc-300 rounded-md hover:bg-accent hover:text-white transition-colors duration-200 shadow-sm">
+                  <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
+                  Edit Solution
+                </button>
+              </div>
+              
+              <div id="solution-edit-mode" class="hidden flex-col gap-3">
+                <textarea id="solution-textarea" class="w-full bg-zinc-900/50 border border-zinc-700 rounded-md p-3 text-sm text-zinc-300 focus:outline-none focus:border-accent-soft min-h-[120px] placeholder-zinc-600" placeholder="Explică abordarea aici...">${escapeHtml(problem.solution_logic || "")}</textarea>
+                <div class="flex justify-end gap-2">
+                  <button id="cancel-solution-btn" class="px-4 py-2 bg-transparent text-xs font-semibold text-zinc-400 hover:text-zinc-200 transition-colors">Cancel</button>
+                  <button id="save-solution-btn" class="px-4 py-2 bg-accent text-xs font-semibold text-white rounded-md hover:bg-accent-soft transition-colors">Save Notes</button>
+                </div>
+              </div>
             </div>
           </div>
         </div>
 
-        <div class="lg:sticky lg:top-24">
-          <div class="rounded-xl border border-zinc-800 bg-zinc-900/70 overflow-hidden">
+        <div class="min-w-0 lg:sticky lg:top-24">
+          <div class="rounded-xl border border-zinc-800 bg-zinc-900/70 overflow-hidden max-w-full">
             <div class="flex items-center justify-between px-4 py-3 border-b border-zinc-800 bg-zinc-900">
               <div class="flex items-center gap-1.5">
                 <span class="w-2.5 h-2.5 rounded-full bg-hard/80"></span>
@@ -606,10 +539,7 @@ function renderSingleProblem(id) {
                 <span class="w-2.5 h-2.5 rounded-full bg-easy/80"></span>
               </div>
               <span class="font-mono text-xs text-zinc-500">solution.py</span>
-              <button
-                id="copy-code-btn"
-                class="flex items-center gap-1.5 text-xs font-mono text-zinc-500 hover:text-accent-soft transition-colors duration-200 px-2 py-1 rounded-md hover:bg-zinc-800/60"
-              >
+              <button id="copy-code-btn" class="flex items-center gap-1.5 text-xs font-mono text-zinc-500 hover:text-accent-soft transition-colors duration-200 px-2 py-1 rounded-md hover:bg-zinc-800/60">
                 <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                   <path stroke-linecap="round" stroke-linejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
                 </svg>
@@ -617,23 +547,20 @@ function renderSingleProblem(id) {
               </button>
             </div>
             <pre id="code-panel" class="p-5 overflow-x-auto text-sm leading-relaxed font-mono !bg-transparent"><code class="language-python">${escapeHtml(problem.python_code)}</code></pre>
-            <div class="grid grid-cols-3 divide-x divide-zinc-800 border-t border-zinc-800">
-              <div class="px-4 py-3 flex flex-col items-center text-center">
-                <p class="text-xs text-zinc-600 mb-1">Time</p>
-                <p class="font-mono text-sm text-accent-soft">${problem.time_complexity}</p>
+            
+            <div class="grid grid-cols-3 divide-x divide-zinc-800 border-t border-zinc-800 bg-zinc-900/30">
+              <div class="px-4 py-4 flex flex-col items-center text-center">
+                <p class="text-[11px] uppercase tracking-wider text-zinc-500 mb-1">Runtime Beats</p>
+                <p class="font-mono text-lg text-easy">${problem.runtime_beats || 0}%</p>
               </div>
-              <div class="px-4 py-3 flex flex-col items-center text-center">
-                <p class="text-xs text-zinc-600 mb-1">Space</p>
-                <p class="font-mono text-sm text-accent-soft">${problem.space_complexity}</p>
+              <div class="px-4 py-4 flex flex-col items-center text-center">
+                <p class="text-[11px] uppercase tracking-wider text-zinc-500 mb-1">Memory Beats</p>
+                <p class="font-mono text-lg text-accent-soft">${problem.memory_beats || 0}%</p>
               </div>
-              <div class="px-4 py-3 flex flex-col items-center text-center">
-                <p class="text-xs text-zinc-600 mb-1">Lines</p>
-                <p class="font-mono text-sm text-accent-soft">${problem.loc}</p>
+              <div class="px-4 py-4 flex flex-col items-center text-center">
+                <p class="text-[11px] uppercase tracking-wider text-zinc-500 mb-1">Lines</p>
+                <p class="font-mono text-lg text-zinc-300">${problem.loc}</p>
               </div>
-            </div>
-            <div class="flex items-center justify-around border-t border-zinc-800 py-5">
-              ${performanceRingHtml('Runtime beats', problem.runtime_beats, '#3DDC97')}
-              ${performanceRingHtml('Memory beats', problem.memory_beats, '#8B7CF6')}
             </div>
           </div>
         </div>
@@ -662,13 +589,43 @@ function renderSingleProblem(id) {
     </section>
   `;
 
-  // Trigger syntax highlighting now that the code block exists in the DOM
+  const descEl = document.getElementById('problem-description');
+  if (descEl) {
+    const walker = document.createTreeWalker(descEl, NodeFilter.SHOW_TEXT, null, false);
+    let node;
+    while (node = walker.nextNode()) {
+      const text = node.nodeValue.trim();
+      if (/^(Example\s*\d*:?|Examples:)/i.test(text)) {
+        if (node.parentNode) {
+          node.parentNode.style.color = '#22c55e';
+          node.parentNode.style.display = 'block';
+          node.parentNode.style.marginTop = '1rem';
+          node.parentNode.style.marginBottom = '0.25rem';
+          node.parentNode.style.fontSize = '1.125rem';
+          node.parentNode.style.fontWeight = 'bold';
+          node.parentNode.style.borderBottom = '1px solid #27272a';
+          node.parentNode.style.paddingBottom = '0.5rem';
+        }
+      } else if (/^constraints?:/i.test(text)) {
+        if (node.parentNode) {
+          node.parentNode.style.color = '#ef4444';
+          node.parentNode.style.display = 'block';
+          node.parentNode.style.marginTop = '1rem';
+          node.parentNode.style.marginBottom = '0.25rem';
+          node.parentNode.style.fontSize = '1.125rem';
+          node.parentNode.style.fontWeight = 'bold';
+          node.parentNode.style.borderBottom = '1px solid #27272a';
+          node.parentNode.style.paddingBottom = '0.5rem';
+        }
+      }
+    }
+  }
+
   const codeBlock = document.querySelector('#code-panel code');
   if (codeBlock && window.hljs) {
     hljs.highlightElement(codeBlock);
   }
 
-  // Wire the copy-to-clipboard button
   const copyBtn = document.getElementById('copy-code-btn');
   const copyLabel = document.getElementById('copy-code-label');
   copyBtn?.addEventListener('click', async () => {
@@ -686,13 +643,91 @@ function renderSingleProblem(id) {
     }
   });
 
-  // Reading progress bar is only active on this view
-  initReadingProgress();
+  async function updateProblemData(updates) {
+    try {
+      const response = await fetch(`/api/problems/${problem.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updates)
+      });
+      if (response.ok) {
+        Object.assign(problem, updates);
+        return true;
+      }
+    } catch (err) {
+      console.error("Eroare la salvare:", err);
+    }
+    return false;
+  }
 
-  // Wire the Focus mode toggle
-  document.getElementById('focus-mode-btn')?.addEventListener('click', () => {
-    document.body.classList.toggle('focus-mode');
+  const editBtn = document.getElementById('edit-solution-btn');
+  const cancelBtn = document.getElementById('cancel-solution-btn');
+  const saveBtn = document.getElementById('save-solution-btn');
+  const displayMode = document.getElementById('solution-display');
+  const editMode = document.getElementById('solution-edit-mode');
+  const textarea = document.getElementById('solution-textarea');
+
+  if (editBtn) {
+    editBtn.addEventListener('click', () => {
+      displayMode.classList.add('hidden');
+      editMode.classList.remove('hidden');
+      editMode.classList.add('flex');
+    });
+  }
+  
+  if (cancelBtn) {
+    cancelBtn.addEventListener('click', () => {
+      editMode.classList.add('hidden');
+      editMode.classList.remove('flex');
+      displayMode.classList.remove('hidden');
+    });
+  }
+
+  if (saveBtn) {
+    saveBtn.addEventListener('click', async () => {
+      const newText = textarea.value.trim();
+      saveBtn.textContent = "Saving...";
+      saveBtn.disabled = true;
+      
+      const success = await updateProblemData({ solution_logic: newText });
+      if (success) {
+        displayMode.querySelector('p').textContent = newText;
+        editMode.classList.add('hidden');
+        editMode.classList.remove('flex');
+        displayMode.classList.remove('hidden');
+      } else {
+        alert("Eroare la salvare. Verifică dacă serverul tău acceptă ruta PUT /api/problems/:id.");
+      }
+      saveBtn.textContent = "Save Notes";
+      saveBtn.disabled = false;
+    });
+  }
+
+  const ratingBars = document.querySelectorAll('.rating-bar');
+  const colors = ['bg-white', 'bg-green-500', 'bg-yellow-500', 'bg-orange-500', 'bg-red-500'];
+  
+  ratingBars.forEach(bar => {
+    bar.addEventListener('click', async (e) => {
+      const newRating = parseInt(e.target.dataset.rating);
+      const success = await updateProblemData({ struggle_rating: newRating });
+      
+      if (success) {
+        ratingBars.forEach(b => {
+          const r = parseInt(b.dataset.rating);
+          b.classList.remove('bg-zinc-800', ...colors);
+          if (r <= newRating) {
+            b.classList.add(colors[r - 1]);
+          } else {
+            b.classList.add('bg-zinc-800');
+          }
+        });
+        const label = document.getElementById('struggle-text-label');
+        if (label) label.textContent = `${newRating}/5`;
+      }
+    });
   });
+
+  initReadingProgress();
 }
 
 // view: My Journey
@@ -718,7 +753,7 @@ function renderJourney() {
   }).join('');
 
   root.innerHTML = `
-    <section class="max-w-3xl mx-auto px-6 pt-16 pb-24">
+    <section class="max-w-3xl mx-auto px-6 pt-8 pb-24">
       <p class="font-mono text-xs text-accent-soft mb-2">Progression</p>
       <h1 class="text-3xl font-bold text-zinc-50 tracking-tight mb-2">My journey through Blind 75</h1>
       <p class="text-zinc-500 mb-12">Moving category by category, from array fundamentals to dynamic programming.</p>
@@ -766,7 +801,7 @@ function renderAnalytics() {
   const maxCat = Math.max(1, ...Object.values(catCounts));
 
   root.innerHTML = `
-    <section class="max-w-7xl mx-auto px-6 pt-16 pb-24">
+    <section class="max-w-7xl mx-auto px-6 pt-8 pb-24">
       <p class="font-mono text-xs text-accent-soft mb-2">Insights</p>
       <h1 class="text-3xl font-bold text-zinc-50 tracking-tight mb-2">Analytics</h1>
       <p class="text-zinc-500 mb-12">A read-out of patterns across ${problems.length} logged solution${problems.length === 1 ? '' : 's'}.</p>
@@ -846,7 +881,7 @@ function renderCompetenceRadar(catCounts) {
   const labels = CATEGORY_ORDER.filter(cat => (catCounts[cat] || 0) > 0);
   const data = labels.map(cat => catCounts[cat] || 0);
 
-  if (labels.length < 3) return; // Chart.js radar needs at least 3 axes to be meaningful
+  if (labels.length < 3) return;
 
   analyticsRadarChart = new Chart(canvas.getContext('2d'), {
     type: 'radar',
@@ -896,7 +931,7 @@ function renderFlashcards() {
   const card = pickRandomProblem();
 
   root.innerHTML = `
-    <section class="max-w-2xl mx-auto px-6 pt-16 pb-24">
+    <section class="max-w-2xl mx-auto px-6 pt-8 pb-24">
       <div class="mb-10 text-center">
         <p class="font-mono text-xs text-accent-soft mb-2">Spaced Repetition</p>
         <h1 class="text-3xl font-bold text-zinc-50 tracking-tight mb-2">Flashcard mode</h1>
@@ -937,7 +972,6 @@ function renderFlashcards() {
     const currentId = flipCard?.dataset.id;
     const next = pickRandomProblem(currentId);
     window.location.hash = 'flashcards';
-    // Same hash won't retrigger hashchange, so re-render directly with a fresh pick
     renderFlashcardFace(next);
   });
 }
