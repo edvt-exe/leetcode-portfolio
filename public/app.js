@@ -1,29 +1,14 @@
 // state
 const state = {
   problems: [],
+  categoryStats: [],
+  categoryCounts: {},
   loaded: false
 };
 
-const CATEGORY_ORDER = [
-  'Array & Hashing',
-  'Two Pointers',
-  'Sliding Window',
-  'Stack',
-  'Binary Search',
-  'Linked List',
-  'Trees',
-  'Tries',
-  'Heap / Priority Queue',
-  'Backtracking',
-  'Graphs',
-  'Advanced Graphs',
-  '1-D Dynamic Programming',
-  '2-D Dynamic Programming',
-  'Greedy',
-  'Intervals',
-  'Math & Geometry',
-  'Bit Manipulation'
-];
+const UNCATEGORIZED = 'Uncategorized';
+const RADAR_MAX_CATEGORIES = 8;
+const PAGE_SIZE = 60;
 
 const DIFF_STYLES = {
   Easy:   { text: 'text-easy',   bg: 'bg-easy/10',   border: 'border-easy/30' },
@@ -95,6 +80,15 @@ function struggleMeterHtml(rating = 0, interactive = false) {
   </div>`;
 }
 
+// Unique categories with solved counts, most-solved first (ties broken alphabetically).
+function computeCategoryStats(problems) {
+  const counts = new Map();
+  for (const p of problems) counts.set(p.category, (counts.get(p.category) || 0) + 1);
+  return [...counts.entries()]
+    .map(([name, count]) => ({ name, count }))
+    .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name));
+}
+
 function getSimilarProblems(current, count = 3) {
   const pool = state.problems.filter(p => p.category === current.category && p.id !== current.id);
   const shuffled = [...pool].sort(() => Math.random() - 0.5);
@@ -108,11 +102,19 @@ async function loadProblems() {
   if (state.loaded) return state.problems;
   try {
     const res = await fetch('/api/problems');
-    state.problems = await res.json();
+    const data = await res.json();
+    state.problems = Array.isArray(data) ? data : [];
   } catch (err) {
     state.problems = [];
     console.error('Failed to load problems', err);
   }
+  state.problems.forEach(p => {
+    p.category = (p.category && String(p.category).trim()) || UNCATEGORIZED;
+    p.title = p.title || `Problem ${p.id}`;
+    p.loc = Number(p.loc) || 0;
+  });
+  state.categoryStats = computeCategoryStats(state.problems);
+  state.categoryCounts = Object.fromEntries(state.categoryStats.map(c => [c.name, c.count]));
   state.loaded = true;
   return state.problems;
 }
@@ -198,7 +200,33 @@ function problemCard(p) {
   </a>`;
 }
 
-// view: Home
+// Renders cards in chunks so a few thousand problems never hit the DOM at once.
+function mountPaginatedGrid(grid, moreEl, items, emptyHtml) {
+  grid.innerHTML = '';
+  moreEl.innerHTML = '';
+  if (!items.length) {
+    grid.innerHTML = emptyHtml;
+    return;
+  }
+  let shown = 0;
+  function showNext() {
+    const chunk = items.slice(shown, shown + PAGE_SIZE);
+    grid.insertAdjacentHTML('beforeend', chunk.map(problemCard).join(''));
+    shown += chunk.length;
+    const remaining = items.length - shown;
+    if (remaining > 0) {
+      moreEl.innerHTML = `
+        <button type="button" class="px-5 py-2.5 rounded-lg border border-zinc-800 bg-zinc-900/60 hover:border-accent-soft/50 text-sm text-zinc-300 transition-colors duration-200">
+          Show ${Math.min(PAGE_SIZE, remaining)} more <span class="text-zinc-600 font-mono text-xs ml-1">(${remaining} remaining)</span>
+        </button>`;
+      moreEl.querySelector('button').addEventListener('click', showNext);
+    } else {
+      moreEl.innerHTML = '';
+    }
+  }
+  showNext();
+}
+
 // view: Home
 function renderHome() {
   const total = state.problems.length;
@@ -232,13 +260,13 @@ function renderHome() {
         <div class="max-w-3xl">
           <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-zinc-800 bg-zinc-900/50 text-xs font-mono text-zinc-400 mb-6">
             <span class="w-2 h-2 rounded-full bg-accent animate-pulse"></span>
-            Blind 75 Progress Tracker
+            LeetCode Progress Tracker
           </div>
           <h1 class="text-4xl sm:text-5xl font-extrabold text-zinc-50 tracking-tight mb-6 leading-tight">
             Mastering data structures & algorithms, one solution at a time.
           </h1>
           <p class="text-zinc-400 text-base sm:text-lg leading-relaxed mb-8">
-            A clean portfolio showcasing Python solutions for the Blind 75 LeetCode challenge, featuring performance metrics, custom notes, and clean UI.
+            A clean portfolio showcasing my Python solutions to LeetCode problems, featuring performance metrics, custom notes, and clean UI.
           </p>
           <div class="flex flex-wrap items-center gap-4">
             <a href="#problems" class="inline-flex items-center gap-2 px-5 py-2.5 bg-accent hover:bg-accent-soft text-zinc-950 font-semibold text-sm rounded-lg transition-colors duration-200 shadow-sm">
@@ -253,7 +281,7 @@ function renderHome() {
 
         <div class="shrink-0 rounded-2xl border border-zinc-800 bg-zinc-900/40 p-6 sm:p-8 text-center min-w-[220px]">
           <p class="text-xs text-zinc-500 font-mono mb-2 uppercase tracking-wider">Total Progress</p>
-          <p class="text-5xl font-extrabold text-zinc-100 font-mono">${total}<span class="text-lg text-zinc-600 font-normal">/75</span></p>
+          <p class="text-5xl font-extrabold text-zinc-100 font-mono">${total}</p>
           <p class="text-xs text-zinc-500 mt-2">Problems Solved</p>
         </div>
       </div>
@@ -310,7 +338,8 @@ function renderProblemsDirectory(options = {}) {
   const title = options.title || 'All problems';
   const subtitle = options.subtitle || `${sourceProblems.length} problem${sourceProblems.length === 1 ? '' : 's'} logged so far.`;
   const emptyMessage = options.emptyMessage || 'No problems match these filters yet.';
-  const categories = [...new Set(sourceProblems.map(p => p.category))];
+  const categoryOptions = computeCategoryStats(sourceProblems)
+    .sort((a, b) => a.name.localeCompare(b.name));
 
   const filters = {
     difficulty: options.difficulty || 'All',
@@ -340,7 +369,7 @@ function renderProblemsDirectory(options = {}) {
           <label class="text-xs text-zinc-500">Category</label>
           <select id="filter-category" class="bg-zinc-900 border border-zinc-800 text-sm text-zinc-200 rounded-md px-2 py-1.5 focus:border-accent-soft">
             <option value="All">All</option>
-            ${categories.map(c => `<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`).join('')}
+            ${categoryOptions.map(c => `<option value="${escapeHtml(c.name)}">${escapeHtml(c.name)} (${c.count})</option>`).join('')}
           </select>
         </div>
         <div class="flex items-center gap-2 ml-auto">
@@ -359,6 +388,7 @@ function renderProblemsDirectory(options = {}) {
       </div>
 
       <div id="problems-grid" class="grid sm:grid-cols-2 lg:grid-cols-3 gap-5"></div>
+      <div id="problems-more" class="mt-8 text-center"></div>
     </section>
   `;
 
@@ -390,11 +420,12 @@ function renderProblemsDirectory(options = {}) {
       case 'loc-desc': list.sort((a, b) => b.loc - a.loc); break;
     }
 
-    if (list.length === 0) {
-      grid.innerHTML = `<div class="col-span-full text-center py-16 text-zinc-600 border border-dashed border-zinc-800 rounded-xl">${escapeHtml(emptyMessage)}</div>`;
-      return;
-    }
-    grid.innerHTML = list.map(problemCard).join('');
+    mountPaginatedGrid(
+      grid,
+      document.getElementById('problems-more'),
+      list,
+      `<div class="col-span-full text-center py-16 text-zinc-600 border border-dashed border-zinc-800 rounded-xl">${escapeHtml(emptyMessage)}</div>`
+    );
   }
 
   document.getElementById('filter-difficulty').addEventListener('change', e => { filters.difficulty = e.target.value; applyAndRender(); });
@@ -406,8 +437,8 @@ function renderProblemsDirectory(options = {}) {
 
 // view: Saved Problems (reuses the directory layout, filtered to bookmarks)
 function renderSavedProblems() {
-  const savedIds = getBookmarks();
-  const savedProblems = state.problems.filter(p => savedIds.includes(String(p.id)));
+  const savedIds = new Set(getBookmarks());
+  const savedProblems = state.problems.filter(p => savedIds.has(String(p.id)));
 
   renderProblemsDirectory({
     sourceProblems: savedProblems,
@@ -421,9 +452,10 @@ function renderSavedProblems() {
 // view: Search Results
 function renderSearchResults(query) {
   const q = query.trim().toLowerCase();
+  const idQuery = q.replace(/^#/, '');
   const results = q
     ? state.problems.filter(p =>
-        String(p.id).includes(q) ||
+        (idQuery && String(p.id).includes(idQuery)) ||
         p.title.toLowerCase().includes(q) ||
         p.category.toLowerCase().includes(q))
     : [];
@@ -433,13 +465,17 @@ function renderSearchResults(query) {
       <p class="font-mono text-xs text-accent-soft mb-2">Search</p>
       <h1 class="text-3xl font-bold text-zinc-50 tracking-tight mb-1">Results for "${escapeHtml(query)}"</h1>
       <p class="text-zinc-500 mb-10">${results.length} match${results.length === 1 ? '' : 'es'} found.</p>
-      <div id="search-grid" class="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
-        ${results.length
-          ? results.map(problemCard).join('')
-          : `<div class="col-span-full text-center py-16 text-zinc-600 border border-dashed border-zinc-800 rounded-xl">Nothing matched — try an ID, a title, or a category name.</div>`}
-      </div>
+      <div id="search-grid" class="grid sm:grid-cols-2 lg:grid-cols-3 gap-5"></div>
+      <div id="search-more" class="mt-8 text-center"></div>
     </section>
   `;
+
+  mountPaginatedGrid(
+    document.getElementById('search-grid'),
+    document.getElementById('search-more'),
+    results,
+    `<div class="col-span-full text-center py-16 text-zinc-600 border border-dashed border-zinc-800 rounded-xl">Nothing matched — try an ID, a title, or a category name.</div>`
+  );
 }
 
 // view: Single Problem
@@ -732,36 +768,37 @@ function renderSingleProblem(id) {
 
 // view: My Journey
 function renderJourney() {
-  const solvedCategories = new Set(state.problems.map(p => p.category));
+  const stats = state.categoryStats;
+  const maxCount = stats.length ? stats[0].count : 1;
 
-  const items = CATEGORY_ORDER.map((cat, i) => {
-    const solved = solvedCategories.has(cat);
-    const count = state.problems.filter(p => p.category === cat).length;
-    return `
+  const items = stats.map(({ name, count }, i) => `
       <div class="relative pl-12 pb-10 last:pb-0">
-        <div class="absolute left-0 top-0 w-8 h-8 rounded-full border-2 flex items-center justify-center font-mono text-xs
-          ${solved ? 'border-accent-soft bg-accent-dim text-accent-soft' : 'border-zinc-800 bg-zinc-900 text-zinc-600'}">
-          ${solved ? '✓' : i + 1}
+        <div class="absolute left-0 top-0 w-8 h-8 rounded-full border-2 flex items-center justify-center font-mono text-xs border-accent-soft bg-accent-dim text-accent-soft">
+          ${i + 1}
         </div>
-        <div class="rounded-lg border ${solved ? 'border-zinc-800' : 'border-zinc-900'} bg-zinc-900/30 px-5 py-4">
+        <div class="rounded-lg border border-zinc-800 bg-zinc-900/30 px-5 py-4">
           <div class="flex items-center justify-between">
-            <h3 class="font-medium ${solved ? 'text-zinc-100' : 'text-zinc-600'}">${escapeHtml(cat)}</h3>
-            <span class="text-xs font-mono ${solved ? 'text-accent-soft' : 'text-zinc-700'}">${count} solved</span>
+            <h3 class="font-medium text-zinc-100">${escapeHtml(name)}</h3>
+            <span class="text-xs font-mono text-accent-soft">${count} solved</span>
+          </div>
+          <div class="h-1 rounded-full bg-zinc-800 overflow-hidden mt-3">
+            <div class="h-full bg-accent-soft/70 rounded-full" style="width:${(count / maxCount) * 100}%"></div>
           </div>
         </div>
-      </div>`;
-  }).join('');
+      </div>`).join('');
 
   root.innerHTML = `
     <section class="max-w-3xl mx-auto px-6 pt-8 pb-24">
       <p class="font-mono text-xs text-accent-soft mb-2">Progression</p>
-      <h1 class="text-3xl font-bold text-zinc-50 tracking-tight mb-2">My journey through Blind 75</h1>
-      <p class="text-zinc-500 mb-12">Moving category by category, from array fundamentals to dynamic programming.</p>
+      <h1 class="text-3xl font-bold text-zinc-50 tracking-tight mb-2">My LeetCode Journey</h1>
+      <p class="text-zinc-500 mb-12">Every topic I've worked through so far, ranked by how many problems I've solved in it.</p>
 
-      <div class="relative">
+      ${stats.length === 0
+        ? `<div class="rounded-xl border border-dashed border-zinc-800 p-6 text-center text-sm text-zinc-600">No problems solved yet.</div>`
+        : `<div class="relative">
         <div class="absolute left-4 top-2 bottom-2 w-px bg-zinc-800"></div>
         ${items}
-      </div>
+      </div>`}
     </section>
   `;
 }
@@ -796,9 +833,8 @@ function renderAnalytics() {
   const dsSorted = Object.entries(dsCounts).sort((a, b) => b[1] - a[1]);
   const maxDs = dsSorted.length ? dsSorted[0][1] : 1;
 
-  const catCounts = {};
-  problems.forEach(p => { catCounts[p.category] = (catCounts[p.category] || 0) + 1; });
-  const maxCat = Math.max(1, ...Object.values(catCounts));
+  const catStats = state.categoryStats;
+  const maxCat = catStats.length ? catStats[0].count : 1;
 
   root.innerHTML = `
     <section class="max-w-7xl mx-auto px-6 pt-8 pb-24">
@@ -841,12 +877,11 @@ function renderAnalytics() {
       <div class="rounded-xl border border-zinc-800 bg-zinc-900/30 p-6">
         <h2 class="text-sm font-semibold text-zinc-200 mb-5">Coverage by category</h2>
         <div class="grid sm:grid-cols-2 gap-x-8 gap-y-4">
-          ${CATEGORY_ORDER.map(cat => {
-            const count = catCounts[cat] || 0;
+          ${catStats.map(({ name, count }) => {
             return `
             <div>
               <div class="flex justify-between text-xs mb-1.5">
-                <span class="text-zinc-400">${escapeHtml(cat)}</span>
+                <span class="text-zinc-400">${escapeHtml(name)}</span>
                 <span class="font-mono text-zinc-600">${count}</span>
               </div>
               <div class="h-1.5 rounded-full bg-zinc-800 overflow-hidden">
@@ -858,7 +893,8 @@ function renderAnalytics() {
       </div>
 
       <div class="rounded-xl border border-zinc-800 bg-zinc-900/30 p-6 mt-8">
-        <h2 class="text-sm font-semibold text-zinc-200 mb-5">Competence radar</h2>
+        <h2 class="text-sm font-semibold text-zinc-200 mb-1">Competence radar</h2>
+        <p class="text-xs text-zinc-600 mb-5">Top ${RADAR_MAX_CATEGORIES} categories by problems solved.</p>
         <div class="max-w-lg mx-auto">
           <canvas id="competence-radar" height="280"></canvas>
         </div>
@@ -866,10 +902,10 @@ function renderAnalytics() {
     </section>
   `;
 
-  renderCompetenceRadar(catCounts);
+  renderCompetenceRadar(catStats);
 }
 
-function renderCompetenceRadar(catCounts) {
+function renderCompetenceRadar(categoryStats = state.categoryStats) {
   const canvas = document.getElementById('competence-radar');
   if (!canvas || !window.Chart) return;
 
@@ -878,10 +914,16 @@ function renderCompetenceRadar(catCounts) {
     analyticsRadarChart = null;
   }
 
-  const labels = CATEGORY_ORDER.filter(cat => (catCounts[cat] || 0) > 0);
-  const data = labels.map(cat => catCounts[cat] || 0);
+  // Already sorted by count desc; keep only the top N so labels stay readable.
+  const top = categoryStats.slice(0, RADAR_MAX_CATEGORIES);
+  const labels = top.map(c => c.name);
+  const data = top.map(c => c.count);
 
-  if (labels.length < 3) return;
+  if (labels.length < 3) {
+    canvas.parentElement.innerHTML =
+      `<p class="text-sm text-zinc-600 text-center py-10">Solve problems in at least 3 categories to unlock the radar.</p>`;
+    return;
+  }
 
   analyticsRadarChart = new Chart(canvas.getContext('2d'), {
     type: 'radar',
@@ -901,10 +943,11 @@ function renderCompetenceRadar(catCounts) {
       responsive: true,
       scales: {
         r: {
+          beginAtZero: true,
           angleLines: { color: 'rgba(63, 63, 70, 0.6)' },
           grid: { color: 'rgba(63, 63, 70, 0.6)' },
           pointLabels: { color: '#a1a1aa', font: { size: 11 } },
-          ticks: { display: false, stepSize: 1, beginAtZero: true }
+          ticks: { display: false, precision: 0 }
         }
       },
       plugins: { legend: { display: false } }
@@ -912,7 +955,7 @@ function renderCompetenceRadar(catCounts) {
   });
 }
 
-// view: Flashcards (Spaced Repetition)
+// view: Flashcards
 function pickRandomProblem(excludeId = null) {
   const pool = excludeId ? state.problems.filter(p => String(p.id) !== String(excludeId)) : state.problems;
   const source = pool.length ? pool : state.problems;

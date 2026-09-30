@@ -76,5 +76,5 @@ app.get(/.*/, (req, res) => {
 });
 
 app.listen(PORT, () => {
-  console.log(`Blind 75 portfolio server running on http://localhost:${PORT}`);
+  console.log(`LeetCode portfolio server running on http://localhost:${PORT}`);
 });
