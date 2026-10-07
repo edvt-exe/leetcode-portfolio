@@ -5,6 +5,7 @@ import subprocess
 import time
 import urllib.request
 
+
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 PORTFOLIO_ROOT = os.path.abspath(os.path.join(SCRIPT_DIR, '..'))
 SOLUTIONS_ROOT = os.environ.get(

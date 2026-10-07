@@ -130,6 +130,7 @@ The workflow in `.github/workflows/sync.yml` runs on every push to `main`. It ch
 
 ## Project structure
 
+
 ```
 .
 ├── .github/workflows/sync.yml   sync on push
