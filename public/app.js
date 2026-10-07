@@ -254,8 +254,10 @@ function renderHome() {
         </a>`).join('')}
     </div>`;
 
+  document.body.classList.add('home-no-scroll');
+
   root.innerHTML = `
-    <section class="max-w-7xl mx-auto px-6 pt-8 pb-24">
+    <section class="home-fit max-w-7xl mx-auto px-6 pt-8 pb-24">
       <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-8 mb-16">
         <div class="max-w-3xl">
           <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-zinc-800 bg-zinc-900/50 text-xs font-mono text-zinc-400 mb-6">
@@ -303,7 +305,7 @@ function renderHome() {
       </div>
 
       <!-- Last problems solved section -->
-      <div>
+      <div class="home-recent">
         <div class="flex items-center justify-between mb-6">
           <h2 class="text-lg font-bold text-zinc-100 flex items-center gap-2">
             <span class="w-1.5 h-5 bg-accent rounded-full"></span> Last problems solved
@@ -474,7 +476,7 @@ function renderSearchResults(query) {
     document.getElementById('search-grid'),
     document.getElementById('search-more'),
     results,
-    `<div class="col-span-full text-center py-16 text-zinc-600 border border-dashed border-zinc-800 rounded-xl">Nothing matched — try an ID, a title, or a category name.</div>`
+    `<div class="col-span-full text-center py-16 text-zinc-600 border border-dashed border-zinc-800 rounded-xl">Nothing matched — try an ID, a title or a category name.</div>`
   );
 }
 
@@ -956,10 +958,43 @@ function renderCompetenceRadar(categoryStats = state.categoryStats) {
 }
 
 // view: Flashcards
-function pickRandomProblem(excludeId = null) {
-  const pool = excludeId ? state.problems.filter(p => String(p.id) !== String(excludeId)) : state.problems;
-  const source = pool.length ? pool : state.problems;
-  return source[Math.floor(Math.random() * source.length)];
+const FLASH_KEY = 'flashcard_results';
+const flash = { category: 'all', onlySaved: false, currentId: null, session: { hit: 0, miss: 0 } };
+
+function getFlashResults() {
+  try { return JSON.parse(localStorage.getItem(FLASH_KEY)) || {}; }
+  catch { return {}; }
+}
+
+function setFlashResult(id, result) {
+  const results = getFlashResults();
+  results[id] = result;
+  localStorage.setItem(FLASH_KEY, JSON.stringify(results));
+}
+
+function flashPool() {
+  const saved = new Set(getBookmarks());
+  return state.problems.filter(p =>
+    (flash.category === 'all' || p.category === flash.category) &&
+    (!flash.onlySaved || saved.has(String(p.id)))
+  );
+}
+
+function pickFlashcard() {
+  const pool = flashPool();
+  const candidates = pool.length > 1
+    ? pool.filter(p => String(p.id) !== String(flash.currentId))
+    : pool;
+  if (!candidates.length) return null;
+
+  const results = getFlashResults();
+  const weightOf = p => ({ miss: 4, hit: 1 }[results[p.id]] ?? 2);
+  let r = Math.random() * candidates.reduce((sum, p) => sum + weightOf(p), 0);
+  for (const p of candidates) {
+    r -= weightOf(p);
+    if (r <= 0) return p;
+  }
+  return candidates[candidates.length - 1];
 }
 
 function renderFlashcards() {
@@ -971,73 +1006,134 @@ function renderFlashcards() {
     return;
   }
 
-  const card = pickRandomProblem();
+  flash.currentId = null;
+  flash.session = { hit: 0, miss: 0 };
+
+  const categories = [...new Set(state.problems.map(p => p.category))].sort();
 
   root.innerHTML = `
     <section class="max-w-2xl mx-auto px-6 pt-8 pb-24">
-      <div class="mb-10 text-center">
-        <p class="font-mono text-xs text-accent-soft mb-2">Spaced Repetition</p>
+      <div class="mb-8 text-center">
+        <p class="font-mono text-xs text-accent-soft mb-2">Review</p>
         <h1 class="text-3xl font-bold text-zinc-50 tracking-tight mb-2">Flashcard mode</h1>
-        <p class="text-zinc-500">Click the card to flip it. Try to recall the approach before you peek.</p>
+        <p class="text-zinc-500">Recall the approach, flip, then mark how it went.</p>
       </div>
 
-      <div id="flip-card" class="flip-card w-full h-80 cursor-pointer mb-8" data-id="${card.id}">
-        <div class="flip-card-inner">
-          <div class="flip-card-face flip-card-front rounded-2xl border border-zinc-800 bg-zinc-900/60 flex flex-col items-center justify-center text-center px-8">
-            ${difficultyBadge(card.difficulty)}
-            <h2 class="text-2xl font-bold text-zinc-50 mt-4">${escapeHtml(card.title)}</h2>
-            <p class="text-sm text-zinc-500 mt-2">${escapeHtml(card.category)}</p>
-            <p class="text-xs text-zinc-600 mt-8 font-mono">Click to reveal →</p>
-          </div>
-          <div class="flip-card-face flip-card-back rounded-2xl border border-accent-soft/40 bg-zinc-900 flex flex-col items-center justify-center text-center px-8">
-            <div class="flex items-center gap-4 font-mono text-sm text-accent-soft mb-4">
-              <span>${card.time_complexity}</span>
-              <span class="text-zinc-700">·</span>
-              <span>${card.space_complexity}</span>
-            </div>
-            <p class="text-sm text-zinc-400 leading-relaxed max-h-40 overflow-y-auto">${escapeHtml(card.solution_logic)}</p>
-          </div>
+      <div class="flex flex-wrap items-center justify-between gap-3 mb-5 text-sm">
+        <div class="flex items-center gap-3">
+          <select id="flash-category" class="bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2 text-zinc-300">
+            <option value="all">All categories</option>
+            ${categories.map(c => `<option value="${escapeHtml(c)}" ${c === flash.category ? 'selected' : ''}>${escapeHtml(c)}</option>`).join('')}
+          </select>
+          <label class="flex items-center gap-2 text-zinc-400 cursor-pointer select-none">
+            <input id="flash-saved" type="checkbox" class="accent-[#6C5CE9]" ${flash.onlySaved ? 'checked' : ''} />
+            Saved only
+          </label>
         </div>
+        <span id="flash-score" class="font-mono text-xs text-zinc-500"></span>
       </div>
 
-      <div class="flex items-center justify-center gap-3">
-        <a href="#problem/${card.id}" class="px-4 py-2 rounded-lg border border-zinc-800 hover:border-zinc-700 text-sm text-zinc-300 transition-colors duration-200">View full problem</a>
-        <button id="next-card-btn" class="px-5 py-2.5 rounded-lg bg-accent hover:bg-accent-soft text-white text-sm font-medium transition-colors duration-200">Next card</button>
-      </div>
+      <div id="flash-stage"></div>
+
+      <p class="text-center text-xs text-zinc-600 font-mono mt-6">Space = flip · 1 = missed · 2 = got it</p>
     </section>
   `;
 
-  const flipCard = document.getElementById('flip-card');
-  flipCard?.addEventListener('click', () => flipCard.classList.toggle('is-flipped'));
-
-  document.getElementById('next-card-btn')?.addEventListener('click', (e) => {
-    e.stopPropagation();
-    const currentId = flipCard?.dataset.id;
-    const next = pickRandomProblem(currentId);
-    window.location.hash = 'flashcards';
-    renderFlashcardFace(next);
+  document.getElementById('flash-category').addEventListener('change', (e) => {
+    flash.category = e.target.value;
+    flash.currentId = null;
+    e.target.blur();
+    showFlashcard(pickFlashcard());
   });
+  document.getElementById('flash-saved').addEventListener('change', (e) => {
+    flash.onlySaved = e.target.checked;
+    flash.currentId = null;
+    e.target.blur();
+    showFlashcard(pickFlashcard());
+  });
+
+  initFlashcardKeys();
+  showFlashcard(pickFlashcard());
 }
 
-function renderFlashcardFace(card) {
-  const flipCard = document.getElementById('flip-card');
-  if (!flipCard) return;
-  flipCard.classList.remove('is-flipped');
-  flipCard.dataset.id = card.id;
-  flipCard.querySelector('.flip-card-front').innerHTML = `
-    ${difficultyBadge(card.difficulty)}
-    <h2 class="text-2xl font-bold text-zinc-50 mt-4">${escapeHtml(card.title)}</h2>
-    <p class="text-sm text-zinc-500 mt-2">${escapeHtml(card.category)}</p>
-    <p class="text-xs text-zinc-600 mt-8 font-mono">Click to reveal →</p>`;
-  flipCard.querySelector('.flip-card-back').innerHTML = `
-    <div class="flex items-center gap-4 font-mono text-sm text-accent-soft mb-4">
-      <span>${card.time_complexity}</span>
-      <span class="text-zinc-700">·</span>
-      <span>${card.space_complexity}</span>
+function updateFlashScore() {
+  const el = document.getElementById('flash-score');
+  if (!el) return;
+  el.textContent = `${flashPool().length} cards · ✓ ${flash.session.hit}  ✗ ${flash.session.miss}`;
+}
+
+function showFlashcard(card) {
+  const stage = document.getElementById('flash-stage');
+  if (!stage) return;
+  updateFlashScore();
+
+  if (!card) {
+    flash.currentId = null;
+    stage.innerHTML = `<div class="text-center py-16 text-zinc-600 border border-dashed border-zinc-800 rounded-xl">No cards match these filters.</div>`;
+    return;
+  }
+
+  flash.currentId = card.id;
+  const logic = (card.solution_logic || '').trim();
+
+  stage.innerHTML = `
+    <div id="flip-card" class="flip-card w-full h-96 cursor-pointer mb-6">
+      <div class="flip-card-inner">
+        <div class="flip-card-face flip-card-front rounded-2xl border border-zinc-800 bg-zinc-900/60 flex flex-col items-center justify-center text-center px-8">
+          ${difficultyBadge(card.difficulty)}
+          <h2 class="text-2xl font-bold text-zinc-50 mt-4">${escapeHtml(card.title)}</h2>
+          <p class="text-sm text-zinc-500 mt-2">${escapeHtml(card.category)}</p>
+          <p class="text-xs text-zinc-600 mt-8 font-mono">Click to reveal →</p>
+        </div>
+        <div class="flip-card-face flip-card-back rounded-2xl border border-accent-soft/40 bg-zinc-900 flex flex-col p-5 overflow-hidden">
+          ${logic ? `<p class="text-sm text-zinc-300 leading-relaxed mb-3 max-h-24 overflow-y-auto shrink-0">${escapeHtml(logic)}</p>` : ''}
+          <pre id="flash-code" class="flex-1 min-h-0 overflow-auto text-left text-xs leading-relaxed font-mono rounded-lg bg-zinc-950/70 p-3 cursor-auto"><code class="language-python">${escapeHtml(card.python_code)}</code></pre>
+        </div>
+      </div>
     </div>
-    <p class="text-sm text-zinc-400 leading-relaxed max-h-40 overflow-y-auto">${escapeHtml(card.solution_logic)}</p>`;
-  const viewLink = document.querySelector('#app-root a[href^="#problem/"]');
-  if (viewLink) viewLink.setAttribute('href', `#problem/${card.id}`);
+
+    <div class="flex items-center justify-center gap-3">
+      <button id="flash-miss" class="px-5 py-2.5 rounded-lg border border-hard/40 text-hard hover:bg-hard/10 text-sm font-medium transition-colors duration-200">Missed</button>
+      <button id="flash-hit" class="px-5 py-2.5 rounded-lg border border-easy/40 text-easy hover:bg-easy/10 text-sm font-medium transition-colors duration-200">Got it</button>
+      <a href="#problem/${card.id}" class="px-4 py-2.5 rounded-lg border border-zinc-800 hover:border-zinc-700 text-sm text-zinc-400 transition-colors duration-200">Full problem</a>
+    </div>
+  `;
+
+  const flipCard = document.getElementById('flip-card');
+  flipCard.addEventListener('click', () => flipCard.classList.toggle('is-flipped'));
+  document.getElementById('flash-code').addEventListener('click', (e) => e.stopPropagation());
+
+  document.getElementById('flash-miss').addEventListener('click', () => answerFlashcard('miss'));
+  document.getElementById('flash-hit').addEventListener('click', () => answerFlashcard('hit'));
+
+  const codeEl = stage.querySelector('#flash-code code');
+  if (codeEl && window.hljs) hljs.highlightElement(codeEl);
+}
+
+function answerFlashcard(result) {
+  if (flash.currentId == null) return;
+  setFlashResult(flash.currentId, result);
+  flash.session[result]++;
+  showFlashcard(pickFlashcard());
+}
+
+function initFlashcardKeys() {
+  if (window.__flashKeysReady) return;
+  window.__flashKeysReady = true;
+
+  document.addEventListener('keydown', (e) => {
+    if (window.location.hash.replace(/^#/, '').split('/')[0] !== 'flashcards') return;
+    if (['INPUT', 'SELECT', 'TEXTAREA', 'BUTTON'].includes(e.target.tagName)) return;
+
+    if (e.key === ' ' || e.key === 'Enter') {
+      e.preventDefault();
+      document.getElementById('flip-card')?.classList.toggle('is-flipped');
+    } else if (e.key === '1') {
+      answerFlashcard('miss');
+    } else if (e.key === '2') {
+      answerFlashcard('hit');
+    }
+  });
 }
 
 // router
@@ -1058,7 +1154,7 @@ function renderRoute() {
   const hash = window.location.hash.replace(/^#/, '') || 'home';
   const [routeName, param] = hash.split('/');
 
-  document.body.classList.remove('focus-mode');
+  document.body.classList.remove('focus-mode', 'home-no-scroll');
   teardownReadingProgress();
   if (routeName !== 'analytics' && analyticsRadarChart) {
     analyticsRadarChart.destroy();
