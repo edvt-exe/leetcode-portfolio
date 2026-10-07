@@ -550,7 +550,7 @@ function renderSingleProblem(id) {
             </h2>
             <div class="rounded-xl border border-dashed border-zinc-700 bg-zinc-900/20 p-6 transition-colors hover:border-zinc-500 group">
               <div id="solution-display" class="flex flex-col items-start text-left">
-                <p class="text-sm text-zinc-400 mb-5 whitespace-pre-wrap w-full">${escapeHtml(problem.solution_logic || "Nu ai adăugat notițe pentru această problemă încă.")}</p>
+                <p class="text-sm text-zinc-400 mb-5 whitespace-pre-wrap w-full">${escapeHtml(problem.solution_logic || "You haven't added any notes for this problem yet.")}</p>
                 <button id="edit-solution-btn" class="inline-flex self-center items-center gap-2 px-4 py-2 bg-zinc-800 text-xs font-semibold text-zinc-300 rounded-md hover:bg-accent hover:text-white transition-colors duration-200 shadow-sm">
                   <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
                   Edit Solution
