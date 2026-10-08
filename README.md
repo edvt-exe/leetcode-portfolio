@@ -51,7 +51,7 @@ Four views of the same data: a rough count of the data structures I use most, av
 
 The data structure count is a keyword guess based on the category, title and notes. It is not a real analysis of the code.
 
-![Analytics 1](./imgs/analytics1.png)
+![Analytics 1](./imgs/analytics.png)
 ![Analytics 2](./imgs/analytics2.png)
 
 ### Flashcards
@@ -67,7 +67,7 @@ You can limit the deck to one category or to saved problems only. Space flips th
 
 The problems I bookmarked for later. Bookmarks are also stored in localStorage.
 
-![Saved](docs/screenshots/saved.png)
+![Saved](./imgs/saved.png)
 
 ## How it works
 
