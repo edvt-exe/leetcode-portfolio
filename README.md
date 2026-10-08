@@ -17,7 +17,6 @@ Total solved, the Easy / Medium / Hard split and the latest problems I added. On
 Every solved problem as a card, with its difficulty, category, runtime and memory percentile and lines of code. You can filter by difficulty and category, and sort by ID, name or lines of code. Cards load 60 at a time.
 
 ![All problems 1](./imgs/allproblems.png)
-![All problems 2](./imgs/allproblems1.png)
 
 ### Problem page
 
